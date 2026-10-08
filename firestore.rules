@@ -1,0 +1,88 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function isOwner() {
+      return isAuthenticated() && (getUserRole() == 'owner' || request.auth.token.role == 'owner');
+    }
+
+    function isStaffOrOwner() {
+      return isAuthenticated() && (getUserRole() == 'staff' || getUserRole() == 'owner');
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if isAuthenticated();
+      allow write: if isOwner() || request.auth.uid == userId;
+    }
+
+    // Players collection
+    // Staff & Owner can create and read; only Owner can update historical or delete
+    match /players/{playerId} {
+      allow read: if isStaffOrOwner();
+      allow create: if isStaffOrOwner();
+      allow update, delete: if isOwner();
+    }
+
+    // Groups collection
+    match /groups/{groupId} {
+      allow read: if isStaffOrOwner();
+      allow create, delete: if isOwner();
+      // Staff can atomically increment current_registered via subscription flow
+      allow update: if isStaffOrOwner();
+    }
+
+    // Subscriptions collection
+    match /subscriptions/{subId} {
+      allow read: if isStaffOrOwner();
+      allow create: if isStaffOrOwner();
+      allow update, delete: if isOwner();
+    }
+
+    // Attendance collection
+    match /attendance/{attId} {
+      allow read: if isStaffOrOwner();
+      allow create: if isStaffOrOwner();
+      allow update, delete: if isOwner();
+    }
+
+    // Water Cards collection
+    match /water_cards/{cardId} {
+      allow read: if isStaffOrOwner();
+      allow create: if isOwner();
+      // Staff can log daily session consumption
+      allow update: if isStaffOrOwner();
+      allow delete: if isOwner();
+    }
+
+    // Coaches collection
+    match /coaches/{coachId} {
+      allow read: if isStaffOrOwner();
+      allow write: if isOwner();
+    }
+
+    // Payroll collection (Strictly Owner)
+    match /payroll/{payrollId} {
+      allow read, write: if isOwner();
+    }
+
+    // Expenses collection (Strictly Owner)
+    match /expenses/{expenseId} {
+      allow read, write: if isOwner();
+    }
+
+    // General Accounting collection (Strictly Owner)
+    match /general_accounting/{monthDoc} {
+      allow read, write: if isOwner();
+    }
+  }
+}

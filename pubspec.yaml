@@ -1,0 +1,38 @@
+name: swimming_academy
+description: "Swimming World Academy Management System - Cross-platform Flutter Application"
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # Firebase Core & Services
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+
+  # State Management & DI
+  flutter_riverpod: ^2.5.1
+
+  # QR Code Scanning & Generation
+  mobile_scanner: ^5.2.3
+  qr_flutter: ^4.1.0
+
+  # Utilities & Formatting
+  intl: ^0.19.0
+  google_fonts: ^6.2.1
+  uuid: ^4.5.1
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+
+flutter:
+  uses-material-design: true

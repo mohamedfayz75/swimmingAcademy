@@ -1,0 +1,34 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "subscriptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "player_code", "order": "ASCENDING" },
+        { "fieldPath": "start_date", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "attendance",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "payroll",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "month_year", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "expenses",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "month_year", "order": "ASCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}
