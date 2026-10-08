@@ -1,43 +1,38 @@
-name: Build Swimming Academy APK
+name: swimming_academy
+description: "Swimming World Academy Management System - Cross-platform Flutter Application"
+publish_to: 'none'
+version: 1.0.0+1
 
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
+environment:
+  sdk: '>=3.0.0 <4.0.0'
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
 
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+  # Firebase Core & Services
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
 
-      - name: Set up Java Development Kit (JDK 17)
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+  # State Management & DI
+  flutter_riverpod: ^2.5.1
 
-      - name: Set up Flutter SDK
-        uses: subosito/flutter-action@v2
-        with:
-          channel: 'stable'
-          cache: true
+  # QR Code Scanning & Generation
+  mobile_scanner: ^5.2.3
+  qr_flutter: ^4.1.0
 
-      - name: Recreate Android Project Scaffolding
-        run: |
-          flutter create . --org com.swimmingworld --project-name swimming_academy --platforms=android
+  # Utilities & Formatting
+  intl: any
+  google_fonts: ^6.2.1
+  uuid: ^4.5.1
 
-      - name: Get Flutter dependencies
-        run: flutter pub get
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
 
-      - name: Build Android Release APK
-        run: flutter build apk --release --no-tree-shake-icons
-
-      - name: Upload APK Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Swimming-Academy-Release-APK
-          path: build/app/outputs/flutter-apk/app-release.apk
-          if-no-files-found: error
+flutter:
+  uses-material-design: true
