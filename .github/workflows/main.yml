@@ -22,18 +22,19 @@ jobs:
       - name: Set up Flutter SDK
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: '3.27.4'
           channel: 'stable'
           cache: true
 
-      - name: Regenerate Clean Android Project
+      - name: Regenerate Clean Android Scaffolding
         run: |
           rm -rf android
           flutter create . --org com.swimmingworld --project-name swimming_academy --platforms=android
           
-          # Add Camera permission to AndroidManifest.xml
+          # Add Camera and Internet permissions
           sed -i '/<application/i \    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
           
-          # Set minSdkVersion to 21 for Mobile Scanner & Firebase
+          # Set minSdkVersion to 21
           sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
           sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/g' android/app/build.gradle || true
           sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
