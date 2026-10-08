@@ -25,41 +25,18 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Setup Android Scaffolding & Google Services
+      - name: Regenerate Clean Android Project
         run: |
+          rm -rf android
           flutter create . --org com.swimmingworld --project-name swimming_academy --platforms=android
-          mkdir -p android/app
-          cat << 'EOF' > android/app/google-services.json
-          {
-            "project_info": {
-              "project_number": "123456789012",
-              "project_id": "swimming-world-academy",
-              "storage_bucket": "swimming-world-academy.appspot.com"
-            },
-            "client": [
-              {
-                "client_info": {
-                  "mobilesdk_app_id": "1:123456789012:android:abcdef1234567890abcdef",
-                  "android_client_info": {
-                    "package_name": "com.swimmingworld.academy"
-                  }
-                },
-                "oauth_client": [],
-                "api_key": [
-                  {
-                    "current_key": "AIzaSyFakeKeyForBuildingReleaseApkSuccessfully"
-                  }
-                ],
-                "services": {
-                  "appinvite_service": {
-                    "other_platform_oauth_client": []
-                  }
-                }
-              }
-            ],
-            "configuration_version": "1"
-          }
-          EOF
+          
+          # Add Camera permission to AndroidManifest.xml
+          sed -i '/<application/i \    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
+          
+          # Set minSdkVersion to 21 for Mobile Scanner & Firebase
+          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/g' android/app/build.gradle || true
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
 
       - name: Get Flutter dependencies
         run: flutter pub get
