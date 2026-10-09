@@ -26,7 +26,7 @@ jobs:
           channel: 'stable'
           cache: true
 
-      - name: Regenerate Clean Android Scaffolding
+      - name: Regenerate Clean Android Scaffolding & Configure MinSdk
         run: |
           rm -rf android
           flutter create . --org com.swimmingworld --project-name swimming_academy --platforms=android
@@ -34,10 +34,12 @@ jobs:
           # Add Camera and Internet permissions
           sed -i '/<application/i \    <uses-permission android:name="android.permission.CAMERA" />\n    <uses-permission android:name="android.permission.INTERNET" />' android/app/src/main/AndroidManifest.xml
           
-          # Set minSdkVersion to 21
-          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 21/g' android/app/build.gradle || true
-          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 21/g' android/app/build.gradle || true
-          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 21/g' android/app/build.gradle || true
+          # Set minSdk to 23 (Required by Firebase Auth)
+          sed -i 's/minSdkVersion = flutter.minSdkVersion/minSdkVersion = 23/g' android/app/build.gradle || true
+          sed -i 's/minSdk = flutter.minSdkVersion/minSdk = 23/g' android/app/build.gradle || true
+          sed -i 's/minSdkVersion flutter.minSdkVersion/minSdkVersion 23/g' android/app/build.gradle || true
+          sed -i 's/minSdkVersion = [0-9]*/minSdkVersion = 23/g' android/app/build.gradle || true
+          sed -i 's/minSdk = [0-9]*/minSdk = 23/g' android/app/build.gradle || true
 
       - name: Get Flutter dependencies
         run: flutter pub get
