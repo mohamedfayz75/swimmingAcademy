@@ -45,6 +45,8 @@ class AuthRepository {
     // Fallback profile if Firestore user doc does not exist yet
     final newProfile = UserModel(
       uid: user.uid,
+      username: user.email?.split('@').first ?? user.uid,
+      password: password,
       email: user.email ?? email,
       displayName: user.displayName ?? 'مستخدم جديد',
       role: UserRole.staff,
@@ -67,6 +69,8 @@ class AuthRepository {
   }) async {
     final user = UserModel(
       uid: uid,
+      username: email.split('@').first,
+      password: '123',
       email: email,
       displayName: displayName,
       role: role,
