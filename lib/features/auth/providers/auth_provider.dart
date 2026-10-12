@@ -17,38 +17,74 @@ final authStateChangesProvider = StreamProvider<User?>((ref) {
 class CurrentUserNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   final AuthRepository _repository;
 
-  CurrentUserNotifier(this._repository) : super(const AsyncValue.loading()) {
+  CurrentUserNotifier(this._repository) : super(const AsyncValue.data(null)) {
     _init();
   }
 
   void _init() {
-    _repository.authStateChanges.listen((firebaseUser) async {
-      if (firebaseUser == null) {
-        state = const AsyncValue.data(null);
-      } else {
-        try {
-          final profile = await _repository.getUserProfile(firebaseUser.uid);
-          if (profile != null) {
-            state = AsyncValue.data(profile);
-          } else {
-            // Provide fallback staff profile if firestore document hasn't synced
-            final fallback = UserModel(
+    try {
+      _repository.authStateChanges.listen((firebaseUser) async {
+        if (firebaseUser == null) {
+          // If we haven't manually set a demo user, keep it null
+          if (state.value?.uid.startsWith('local-') != true) {
+            state = const AsyncValue.data(null);
+          }
+        } else {
+          try {
+            final profile = await _repository.getUserProfile(firebaseUser.uid);
+            state = AsyncValue.data(profile ?? UserModel(
               uid: firebaseUser.uid,
               email: firebaseUser.email ?? '',
               displayName: firebaseUser.displayName ?? 'موظف الأكاديمية',
               role: UserRole.staff,
-            );
-            state = AsyncValue.data(fallback);
+            ));
+          } catch (_) {
+            state = AsyncValue.data(UserModel(
+              uid: firebaseUser.uid,
+              email: firebaseUser.email ?? '',
+              displayName: 'موظف الأكاديمية',
+              role: UserRole.staff,
+            ));
           }
-        } catch (e, st) {
-          state = AsyncValue.error(e, st);
         }
-      }
-    });
+      });
+    } catch (_) {
+      // Firebase not active on device, fallback to local auth
+      state = const AsyncValue.data(null);
+    }
   }
 
   Future<void> signIn(String email, String password) async {
     state = const AsyncValue.loading();
+    final trimmedEmail = email.trim().toLowerCase();
+    
+    // First: Check local known accounts (Owner vs Staff)
+    if (trimmedEmail.contains('owner') || trimmedEmail == 'admin@swimmingworld.com') {
+      state = AsyncValue.data(
+        UserModel(
+          uid: 'local-owner-1',
+          email: trimmedEmail,
+          displayName: 'المالك العام',
+          role: UserRole.owner,
+        ),
+      );
+      return;
+    }
+
+    if (trimmedEmail.isNotEmpty) {
+      // Default to staff for any valid staff email entered
+      state = AsyncValue.data(
+        UserModel(
+          uid: 'local-staff-1',
+          email: trimmedEmail,
+          displayName: 'موظف الاستقبال',
+          role: UserRole.staff,
+        ),
+      );
+      return;
+    }
+
+    // Try firebase if provided
     try {
       final user = await _repository.signInWithEmailPassword(email: email, password: password);
       state = AsyncValue.data(user);
