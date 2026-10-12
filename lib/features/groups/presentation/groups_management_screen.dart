@@ -155,13 +155,14 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                   },
                   child: const Text('إنشاء المجموعة'),
                 ),
-              ],
+                  ],
+                );
+              },
             );
           },
         );
       },
     );
-  }
   }
 
   @override
