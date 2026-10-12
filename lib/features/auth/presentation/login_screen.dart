@@ -49,13 +49,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
-  void _demoLoginAs(UserRole role) {
-    ref.read(currentUserProvider.notifier).switchDemoRole(role);
-    AppDialogs.showSuccessSnackBar(
-      context,
-      'تم الدخول التجريبي بصلاحية: ${role.arabicTitle}',
-    );
-  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -162,39 +156,29 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 24),
                     const Divider(),
                     const SizedBox(height: 12),
 
-                    // Quick Role Switchers for Demonstration and Testing
-                    Text(
-                      'أو تسجيل الدخول السريع للاختبار والمعاينة:',
-                      style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 12),
-
-                    Row(
-                      children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _demoLoginAs(UserRole.staff),
-                            icon: const Icon(Icons.badge, size: 18),
-                            label: Text('دخول كموظف', style: GoogleFonts.cairo(fontSize: 12)),
-                          ),
+                    // Quick QR Attendance Button (For reception desk without full access)
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppTheme.primaryBlue,
+                          side: const BorderSide(color: AppTheme.primaryBlue),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: AppTheme.warningOrange,
-                              side: const BorderSide(color: AppTheme.warningOrange),
-                            ),
-                            onPressed: () => _demoLoginAs(UserRole.owner),
-                            icon: const Icon(Icons.admin_panel_settings, size: 18),
-                            label: Text('دخول كالمالك', style: GoogleFonts.cairo(fontSize: 12)),
-                          ),
+                        onPressed: () {
+                          ref.read(currentUserProvider.notifier).enterQuickQrMode();
+                          AppDialogs.showSuccessSnackBar(context, 'تم تفعيل وضع ماسح الحضور السريع (QR)');
+                        },
+                        icon: const Icon(Icons.qr_code_scanner, size: 20),
+                        label: Text(
+                          'تسجيل حضور سريع (ماسح QR فقط)',
+                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
