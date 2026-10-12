@@ -7,16 +7,23 @@ class WaterCardRepository {
 
   // Stream active water card
   Stream<WaterCardModel?> streamActiveWaterCard() {
-    return _store.activeWaterCardStream;
+    return _store.waterCardsStream.map((cards) {
+      if (cards.isEmpty) return null;
+      try {
+        return cards.firstWhere((c) => c.isActive);
+      } catch (_) {
+        return cards.first;
+      }
+    });
   }
 
-  // Update daily consumed sessions (day 1, 2, 3, or 4)
+  // Update consumed sessions
   Future<void> updateDaySessions({
     required String cardId,
     required int dayNumber,
     required int sessionsCount,
   }) async {
-    _store.updateWaterCardDay(cardId, dayNumber, sessionsCount);
+    _store.updateWaterCardSessions(cardId, sessionsCount);
   }
 
   // Create a new water card
