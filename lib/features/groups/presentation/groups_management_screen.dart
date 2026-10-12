@@ -29,12 +29,13 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
     showDialog(
       context: context,
       builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setModalState) {
+        return Consumer(
+          builder: (context, ref, _) {
             final coachesAsync = ref.watch(coachesStreamProvider);
-
-            return AlertDialog(
-              title: Text('إضافة مجموعة تدريبية جديدة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            return StatefulBuilder(
+              builder: (context, setModalState) {
+                return AlertDialog(
+                  title: Text('إضافة مجموعة تدريبية جديدة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
               content: SingleChildScrollView(
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
@@ -160,6 +161,7 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
         );
       },
     );
+  }
   }
 
   @override
