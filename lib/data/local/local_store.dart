@@ -10,6 +10,9 @@ import '../../features/players/models/player_model.dart';
 import '../../features/subscriptions/models/subscription_model.dart';
 import '../../features/water_cards/models/water_card_model.dart';
 
+import '../../features/auth/models/user_model.dart';
+import '../../core/rbac/app_role.dart';
+
 class LocalStore {
   static final LocalStore instance = LocalStore._internal();
 
@@ -18,6 +21,7 @@ class LocalStore {
   }
 
   // In-memory collections
+  final List<UserModel> _users = [];
   final List<PlayerModel> _players = [];
   final List<GroupModel> _groups = [];
   final List<SubscriptionModel> _subscriptions = [];
@@ -28,6 +32,7 @@ class LocalStore {
   final List<ExpenseModel> _expenses = [];
 
   // StreamControllers for real-time reactivity
+  final _usersController = StreamController<List<UserModel>>.broadcast();
   final _playersController = StreamController<List<PlayerModel>>.broadcast();
   final _groupsController = StreamController<List<GroupModel>>.broadcast();
   final _subscriptionsController = StreamController<List<SubscriptionModel>>.broadcast();
@@ -37,6 +42,7 @@ class LocalStore {
   final _expensesController = StreamController<List<ExpenseModel>>.broadcast();
 
   // Streams
+  Stream<List<UserModel>> get usersStream => _usersController.stream;
   Stream<List<PlayerModel>> get playersStream => _playersController.stream;
   Stream<List<GroupModel>> get groupsStream => _groupsController.stream;
   Stream<List<SubscriptionModel>> get subscriptionsStream => _subscriptionsController.stream;
@@ -48,6 +54,28 @@ class LocalStore {
   void _initSampleData() {
     final now = Timestamp.now();
     final currentMonth = '${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().year}';
+
+    // 0. Default Users (Owner & Staff)
+    _users.addAll([
+      UserModel(
+        uid: 'user-owner-1',
+        username: 'owner',
+        password: '123',
+        email: 'owner@swimmingworld.com',
+        displayName: 'المالك العام',
+        role: UserRole.owner,
+        createdAt: now,
+      ),
+      UserModel(
+        uid: 'user-staff-1',
+        username: 'staff',
+        password: '123',
+        email: 'staff@swimmingworld.com',
+        displayName: 'موظف الاستقبال',
+        role: UserRole.staff,
+        createdAt: now,
+      ),
+    ]);
 
     // 1. Coaches
     _coaches.addAll([
@@ -539,5 +567,49 @@ class LocalStore {
       totalWaterCardExpenses: 0, // Already included seamlessly in generalExpensesTotal!
       otherExpenses: generalExpensesTotal,
     );
+  }
+
+  // --- Users Management (Staff & Admin) ---
+  List<UserModel> getUsers() => List.unmodifiable(_users);
+
+  UserModel? authenticate(String usernameOrEmail, String password) {
+    final query = usernameOrEmail.trim().toLowerCase();
+    try {
+      final user = _users.firstWhere(
+        (u) =>
+            (u.username.toLowerCase() == query || u.email.toLowerCase() == query) &&
+            u.password == password &&
+            u.isActive,
+      );
+      return user;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  void addUser(UserModel user) {
+    _users.add(user);
+    _usersController.add(List.unmodifiable(_users));
+  }
+
+  void updateUserPassword(String uid, String newPassword) {
+    final index = _users.indexWhere((u) => u.uid == uid);
+    if (index != -1) {
+      _users[index] = _users[index].copyWith(password: newPassword);
+      _usersController.add(List.unmodifiable(_users));
+    }
+  }
+
+  void toggleUserActive(String uid, bool isActive) {
+    final index = _users.indexWhere((u) => u.uid == uid);
+    if (index != -1) {
+      _users[index] = _users[index].copyWith(isActive: isActive);
+      _usersController.add(List.unmodifiable(_users));
+    }
+  }
+
+  void deleteUser(String uid) {
+    _users.removeWhere((u) => u.uid == uid);
+    _usersController.add(List.unmodifiable(_users));
   }
 }
