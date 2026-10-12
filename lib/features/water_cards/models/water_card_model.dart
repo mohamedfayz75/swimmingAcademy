@@ -1,33 +1,29 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/constants/app_constants.dart';
 
 class WaterCardModel {
   final String id;
   final Timestamp cardDate;
   final String cardName;
+  final String poolType; // نصف أولمبي / ترفيهي
   final double cardPrice;
   final int totalSessions;
-  final int usedDay1;
-  final int usedDay2;
-  final int usedDay3;
-  final int usedDay4;
+  final int usedSessions;
   final String monthlyClosingRef;
 
   const WaterCardModel({
     required this.id,
     required this.cardDate,
     required this.cardName,
+    this.poolType = AppConstants.poolSemiOlympic,
     required this.cardPrice,
     required this.totalSessions,
-    this.usedDay1 = 0,
-    this.usedDay2 = 0,
-    this.usedDay3 = 0,
-    this.usedDay4 = 0,
+    this.usedSessions = 0,
     required this.monthlyClosingRef,
   });
 
   // Calculated fields
-  int get totalUsedSessions => usedDay1 + usedDay2 + usedDay3 + usedDay4;
-  int get remainingSessions => (totalSessions - totalUsedSessions) > 0 ? (totalSessions - totalUsedSessions) : 0;
+  int get remainingSessions => (totalSessions - usedSessions) > 0 ? (totalSessions - usedSessions) : 0;
   String get status => remainingSessions > 0 ? 'نشط' : 'منتهي';
   bool get isActive => remainingSessions > 0;
   bool get isLow => remainingSessions > 0 && remainingSessions <= 5;
@@ -39,12 +35,10 @@ class WaterCardModel {
       id: doc.id,
       cardDate: data['card_date'] as Timestamp? ?? Timestamp.now(),
       cardName: data['card_name'] as String? ?? 'كرت مياة',
+      poolType: data['pool_type'] as String? ?? AppConstants.poolSemiOlympic,
       cardPrice: (data['card_price'] as num?)?.toDouble() ?? 0.0,
       totalSessions: (data['total_sessions'] as num?)?.toInt() ?? 40,
-      usedDay1: (data['used_day_1'] as num?)?.toInt() ?? 0,
-      usedDay2: (data['used_day_2'] as num?)?.toInt() ?? 0,
-      usedDay3: (data['used_day_3'] as num?)?.toInt() ?? 0,
-      usedDay4: (data['used_day_4'] as num?)?.toInt() ?? 0,
+      usedSessions: (data['used_sessions'] as num?)?.toInt() ?? 0,
       monthlyClosingRef: data['monthly_closing_ref'] as String? ?? '',
     );
   }
@@ -53,13 +47,10 @@ class WaterCardModel {
     return {
       'card_date': cardDate,
       'card_name': cardName,
+      'pool_type': poolType,
       'card_price': cardPrice,
       'total_sessions': totalSessions,
-      'used_day_1': usedDay1,
-      'used_day_2': usedDay2,
-      'used_day_3': usedDay3,
-      'used_day_4': usedDay4,
-      'total_used_sessions': totalUsedSessions,
+      'used_sessions': usedSessions,
       'remaining_sessions': remainingSessions,
       'status': status,
       'monthly_closing_ref': monthlyClosingRef,
@@ -70,24 +61,20 @@ class WaterCardModel {
     String? id,
     Timestamp? cardDate,
     String? cardName,
+    String? poolType,
     double? cardPrice,
     int? totalSessions,
-    int? usedDay1,
-    int? usedDay2,
-    int? usedDay3,
-    int? usedDay4,
+    int? usedSessions,
     String? monthlyClosingRef,
   }) {
     return WaterCardModel(
       id: id ?? this.id,
       cardDate: cardDate ?? this.cardDate,
       cardName: cardName ?? this.cardName,
+      poolType: poolType ?? this.poolType,
       cardPrice: cardPrice ?? this.cardPrice,
       totalSessions: totalSessions ?? this.totalSessions,
-      usedDay1: usedDay1 ?? this.usedDay1,
-      usedDay2: usedDay2 ?? this.usedDay2,
-      usedDay3: usedDay3 ?? this.usedDay3,
-      usedDay4: usedDay4 ?? this.usedDay4,
+      usedSessions: usedSessions ?? this.usedSessions,
       monthlyClosingRef: monthlyClosingRef ?? this.monthlyClosingRef,
     );
   }
