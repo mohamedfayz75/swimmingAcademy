@@ -156,30 +156,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
 
-                    const SizedBox(height: 24),
-                    const Divider(),
                     const SizedBox(height: 12),
-
-                    // Quick QR Attendance Button (For reception desk without full access)
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppTheme.primaryBlue,
-                          side: const BorderSide(color: AppTheme.primaryBlue),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                        onPressed: () {
-                          ref.read(currentUserProvider.notifier).enterQuickQrMode();
-                          AppDialogs.showSuccessSnackBar(context, 'تم تفعيل وضع ماسح الحضور السريع (QR)');
-                        },
-                        icon: const Icon(Icons.qr_code_scanner, size: 20),
-                        label: Text(
-                          'تسجيل حضور سريع (ماسح QR فقط)',
-                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
-                        ),
-                      ),
-                    ),
                   ],
                 ),
               ),
