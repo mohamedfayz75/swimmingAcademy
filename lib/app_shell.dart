@@ -15,6 +15,7 @@ import 'features/players/presentation/player_registration_screen.dart';
 import 'features/players/presentation/players_list_screen.dart';
 import 'features/subscriptions/presentation/subscription_entry_screen.dart';
 import 'features/subscriptions/presentation/subscriptions_list_screen.dart';
+import 'features/auth/presentation/user_management_screen.dart';
 import 'features/water_cards/presentation/water_card_screen.dart';
 
 class AppShell extends ConsumerStatefulWidget {
@@ -51,6 +52,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       const CoachPayrollScreen(),              // 9: Coach Payroll & Advances
       const CoachesListScreen(),               // 10: Coaches Directory
       const GroupsManagementScreen(),          // 11: Groups Management
+      const UserManagementScreen(),            // 12: Staff & Users Management
     ];
 
     final List<Widget> screens = [
@@ -210,24 +212,18 @@ class _AppShellState extends ConsumerState<AppShell> {
                   Navigator.pop(context);
                 },
               ),
+              ListTile(
+                leading: const Icon(Icons.manage_accounts, color: AppTheme.warningOrange),
+                title: Text('إدارة المستخدمين والموظفين', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                selected: _currentIndex == 12,
+                onTap: () {
+                  setState(() => _currentIndex = 12);
+                  Navigator.pop(context);
+                },
+              ),
             ],
 
             const Divider(),
-
-            // Demo Role Switcher
-            ListTile(
-              leading: const Icon(Icons.swap_horiz, color: Colors.blueGrey),
-              title: Text('تبديل الصلاحية (معاينة تجريبية)', style: GoogleFonts.cairo(fontSize: 13)),
-              subtitle: Text(
-                isOwner ? 'التبديل إلى موظف استقبال (إخفاء الحسابات)' : 'التبديل إلى مالك عام (إظهار الكل)',
-                style: GoogleFonts.cairo(fontSize: 11),
-              ),
-              onTap: () {
-                final newRole = isOwner ? UserRole.staff : UserRole.owner;
-                ref.read(currentUserProvider.notifier).switchDemoRole(newRole);
-                Navigator.pop(context);
-              },
-            ),
 
             ListTile(
               leading: const Icon(Icons.logout, color: AppTheme.errorRed),
