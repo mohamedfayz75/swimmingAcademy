@@ -77,11 +77,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               ),
               currentAccountPicture: CircleAvatar(
                 backgroundColor: Colors.white,
-                child: Icon(
-                  isOwner ? Icons.admin_panel_settings : Icons.badge,
-                  color: AppTheme.primaryBlue,
-                  size: 36,
-                ),
+                backgroundImage: const AssetImage('assets/images/logo.png'),
+                child: null,
               ),
               accountName: Text(
                 user?.displayName ?? 'مستخدم الأكاديمية',
