@@ -3,6 +3,12 @@ class AppConstants {
   static const String appName = 'أكاديمية عالم السباحة';
   static const String appSubtitle = 'Swimming World Academy';
 
+  // Default Branch
+  static const String defaultBranch = 'فرع المشاة';
+  static const List<String> branches = [
+    'فرع المشاة',
+  ];
+
   // Firestore Collections
   static const String usersCollection = 'users';
   static const String playersCollection = 'players';
@@ -15,13 +21,36 @@ class AppConstants {
   static const String expensesCollection = 'expenses';
   static const String generalAccountingCollection = 'general_accounting';
 
-  // Training Types
+  // Pool Types for Water Cards
+  static const String poolSemiOlympic = 'نصف أولمبي';
+  static const String poolRecreational = 'ترفيهي';
+  static const List<String> poolTypes = [
+    poolSemiOlympic,
+    poolRecreational,
+  ];
+
+  // Group Types and Max Capacities
+  static const String groupTypeNormal = 'مجموعة عادية (6 سباحين)';
+  static const String groupTypeSemiPrivate = 'سيمي-برايفت (إخوة/ثنائي - 2 سباحين)';
+  static const String groupTypeAdultPrivate = 'برايفت كبار (سباح واحد)';
+  static const String groupTypeBabyPrivate = 'برايفت رضع (طفلين - 30 دقيقة لكل طفل)';
+
+  static const List<String> groupTypes = [
+    groupTypeNormal,
+    groupTypeSemiPrivate,
+    groupTypeAdultPrivate,
+    groupTypeBabyPrivate,
+  ];
+
+  // Training Levels
   static const List<String> trainingTypes = [
-    'تعليم',
+    'تعليم (مبتدئ)',
     'نجمة 1',
     'نجمة 2',
     'تجهيزي',
     'فرق',
+    'برايفت رضع',
+    'برايفت كبار',
   ];
 
   // Days of Week (Arabic)
@@ -36,19 +65,49 @@ class AppConstants {
   ];
 
   // Customer Types
-  static const String customerTypeNew = 'عادي';
+  static const String customerTypeNew = 'عادي (جديد)';
   static const String customerTypeRenew = 'تجديد';
 
-  // Attendance Statuses
-  static const String attendancePresent = 'حاضر';
-  static const String attendanceAbsent = 'غائب';
-  static const String attendanceExcused = 'معتذر';
+  // Payment Methods
+  static const String paymentCash = 'كاش (نقدي)';
+  static const String paymentInstaPay = 'انستاباي (InstaPay)';
+  static const String paymentVodafoneCash = 'فودافون كاش';
+  static const String paymentBankTransfer = 'تحويل بنكي';
+
+  static const List<String> paymentMethods = [
+    paymentCash,
+    paymentInstaPay,
+    paymentVodafoneCash,
+    paymentBankTransfer,
+  ];
+
+  // Booking / Subscription Statuses
+  static const String statusActive = 'نشط ومؤكد';
+  static const String statusDeposit = 'حجز بعربون';
+  static const String statusPending = 'حجز مؤقت معلق';
+  static const String statusExpired = 'منتهي';
 
   // Subscription Types
   static const List<String> subscriptionTypes = [
+    'شهري (4 حصص)',
     'شهري (8 حصص)',
     'مكثف (12 حصة)',
-    'خاص (Private)',
-    'تدريب فرق',
+    'ربع سنوي (24 حصة)',
+    'نصف سنوي (48 حصة)',
+    'سنوي (96 حصة)',
+    'برايفت خاص',
+  ];
+
+  // Expense Categories
+  static const List<String> defaultExpenseCategories = [
+    'كروت مياة',
+    'صيانة وفلاتر',
+    'كلور ومواد تعقيم',
+    'أدوات ومعدات سباحة',
+    'إيجار مسبح',
+    'كهرباء ومرافق',
+    'بوفيه وضيافة',
+    'دعاية وإعلانات',
+    'نثريات ومصروفات أخرى',
   ];
 }
