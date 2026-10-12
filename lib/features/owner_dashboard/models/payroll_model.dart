@@ -63,6 +63,9 @@ class CoachModel {
 class PayrollModel {
   final String coachId;
   final String coachName;
+  final int sessions1To10;
+  final int sessions11To20;
+  final int sessions21To31;
   final int totalSessions; // إجمالي الحصص المسجلة يومياً خلال الشهر
   final double sessionRate; // سعر الحصة (يدخله المالك فقط)
   final double advancePayments; // إجمالي السلف والخصومات
@@ -75,7 +78,10 @@ class PayrollModel {
   const PayrollModel({
     required this.coachId,
     required this.coachName,
-    this.totalSessions = 0,
+    this.sessions1To10 = 0,
+    this.sessions11To20 = 0,
+    this.sessions21To31 = 0,
+    int? totalSessions,
     required this.sessionRate,
     this.advancePayments = 0.0,
     this.paymentStatus = 'معلق',
@@ -83,7 +89,7 @@ class PayrollModel {
     this.payoutNotes = '',
     required this.payoutDate,
     required this.monthYear,
-  });
+  }) : totalSessions = totalSessions ?? (sessions1To10 + sessions11To20 + sessions21To31);
 
   // Calculated fields
   double get totalEarnings => totalSessions * sessionRate;
