@@ -14,9 +14,10 @@ class LoginScreen extends ConsumerStatefulWidget {
 }
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
-  final _emailController = TextEditingController(text: 'staff@swimmingworld.com');
-  final _passwordController = TextEditingController(text: '123456');
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   bool _isLoading = false;
+  bool _obscurePassword = true;
 
   @override
   void dispose() {
@@ -26,12 +27,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   }
 
   Future<void> _handleLogin() async {
+    final email = _emailController.text.trim();
+    final password = _passwordController.text;
+
+    if (email.isEmpty) {
+      AppDialogs.showErrorSnackBar(context, 'يرجى إدخال البريد الإلكتروني أو اسم المستخدم');
+      return;
+    }
+
     setState(() => _isLoading = true);
     try {
-      await ref.read(currentUserProvider.notifier).signIn(
-            _emailController.text.trim(),
-            _passwordController.text,
-          );
+      await ref.read(currentUserProvider.notifier).signIn(email, password);
     } catch (e) {
       if (mounted) {
         AppDialogs.showErrorSnackBar(context, 'فشل تسجيل الدخول: $e');
@@ -111,18 +117,31 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
                         labelText: 'البريد الإلكتروني',
+                        hintText: 'مثال: owner أو staff أو إيميلك',
                         prefixIcon: Icon(Icons.email, color: AppTheme.primaryBlue),
                       ),
                     ),
                     const SizedBox(height: 16),
 
-                    // Password Field
+                    // Password Field with Eye Toggle
                     TextField(
                       controller: _passwordController,
-                      obscureText: true,
-                      decoration: const InputDecoration(
+                      obscureText: _obscurePassword,
+                      decoration: InputDecoration(
                         labelText: 'كلمة المرور',
-                        prefixIcon: Icon(Icons.lock, color: AppTheme.primaryBlue),
+                        hintText: 'أدخل كلمة المرور',
+                        prefixIcon: const Icon(Icons.lock, color: AppTheme.primaryBlue),
+                        suffixIcon: IconButton(
+                          icon: Icon(
+                            _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                            color: AppTheme.primaryBlue,
+                          ),
+                          onPressed: () {
+                            setState(() {
+                              _obscurePassword = !_obscurePassword;
+                            });
+                          },
+                        ),
                       ),
                     ),
 
