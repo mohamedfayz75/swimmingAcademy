@@ -1,32 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../../core/constants/app_constants.dart';
+import '../../../data/local/local_store.dart';
 import '../models/player_model.dart';
 
 class PlayerRepository {
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final LocalStore _store = LocalStore.instance;
 
-  CollectionReference get _playersRef => _firestore.collection(AppConstants.playersCollection);
-
-  // Generate unique formatted player code, e.g. "SW-101"
+  // Generate unique formatted player code, e.g. "SW-103"
   Future<String> generateNextPlayerCode() async {
-    try {
-      final snapshot = await _playersRef.orderBy('created_at', descending: true).limit(1).get();
-      if (snapshot.docs.isNotEmpty) {
-        final lastCode = snapshot.docs.first.get('player_code') as String?;
-        if (lastCode != null && lastCode.startsWith('SW-')) {
-          final numberPart = int.tryParse(lastCode.replaceAll('SW-', ''));
-          if (numberPart != null) {
-            return 'SW-${numberPart + 1}';
-          }
-        }
-      }
-    } catch (_) {
-      // Fallback if index not ready
-    }
-    // Default starting code
-    final countSnapshot = await _playersRef.count().get();
-    final count = (countSnapshot.count ?? 0) + 101;
-    return 'SW-$count';
+    return _store.generateNextPlayerCode();
   }
 
   // Register player
@@ -47,43 +28,41 @@ class PlayerRepository {
       birthDate: Timestamp.fromDate(birthDate),
       guardianPhone: guardianPhone.trim(),
       customerType: customerType,
-      qrCodeUrl: playerCode, // Using player code directly as QR payload
+      qrCodeUrl: playerCode,
       createdAt: now,
     );
 
-    await _playersRef.doc(playerCode).set(player.toFirestore());
+    // Save to LocalStore
+    _store.addPlayer(player);
+
+    // Optional firestore sync in background
+    try {
+      FirebaseFirestore.instance.collection('players').doc(playerCode).set(player.toFirestore());
+    } catch (_) {}
+
     return player;
   }
 
   // Get player by code
   Future<PlayerModel?> getPlayerByCode(String playerCode) async {
-    final doc = await _playersRef.doc(playerCode.trim().toUpperCase()).get();
-    if (doc.exists) {
-      return PlayerModel.fromFirestore(doc);
-    }
-    return null;
+    return _store.getPlayerByCode(playerCode);
   }
 
-  // Stream all players (ordered by newest first)
+  // Stream all players (always immediate & real-time)
   Stream<List<PlayerModel>> streamPlayers() {
-    return _playersRef
-        .orderBy('created_at', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => PlayerModel.fromFirestore(doc)).toList());
+    // Emit current cache immediately
+    Future.microtask(() => _store.playersStream);
+    return _store.playersStream;
   }
 
-  // Search players by query (code, name, or phone)
+  // Search players
   Future<List<PlayerModel>> searchPlayers(String query) async {
-    final cleanQuery = query.trim().toLowerCase();
-    if (cleanQuery.isEmpty) return [];
-
-    final snapshot = await _playersRef.limit(50).get();
-    return snapshot.docs
-        .map((doc) => PlayerModel.fromFirestore(doc))
-        .where((player) =>
-            player.playerCode.toLowerCase().contains(cleanQuery) ||
-            player.playerName.toLowerCase().contains(cleanQuery) ||
-            player.guardianPhone.contains(cleanQuery))
-        .toList();
+    final clean = query.trim().toLowerCase();
+    if (clean.isEmpty) return _store.getPlayers();
+    return _store.getPlayers().where((p) =>
+      p.playerCode.toLowerCase().contains(clean) ||
+      p.playerName.toLowerCase().contains(clean) ||
+      p.guardianPhone.contains(clean),
+    ).toList();
   }
 }
