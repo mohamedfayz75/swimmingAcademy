@@ -531,7 +531,7 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
                 ),
                 items: AppConstants.paymentMethods.map((m) {
                   return DropdownMenuItem(value: m, child: Text(m, style: GoogleFonts.cairo(fontSize: 14)));
-                }).toList>,
+                }).toList(),
                 onChanged: (val) {
                   if (val != null) setState(() => _paymentMethod = val);
                 },
