@@ -18,11 +18,7 @@ class QRAttendanceScannerScreen extends ConsumerStatefulWidget {
 }
 
 class _QRAttendanceScannerScreenState extends ConsumerState<QRAttendanceScannerScreen> {
-  final MobileScannerController _scannerController = MobileScannerController(
-    detectionSpeed: DetectionSpeed.normal,
-    facing: CameraFacing.back,
-    torchEnabled: false,
-  );
+  final MobileScannerController _scannerController = MobileScannerController();
 
   final _manualCodeController = TextEditingController();
   bool _isProcessing = false;
