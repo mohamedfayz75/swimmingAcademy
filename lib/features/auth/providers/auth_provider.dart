@@ -4,123 +4,120 @@ import '../../../core/rbac/app_role.dart';
 import '../models/user_model.dart';
 import '../repository/auth_repository.dart';
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../data/local/local_store.dart';
+
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository();
 });
 
-final authStateChangesProvider = StreamProvider<User?>((ref) {
-  final repo = ref.watch(authRepositoryProvider);
-  return repo.authStateChanges;
+final usersStreamProvider = StreamProvider<List<UserModel>>((ref) {
+  return LocalStore.instance.usersStream;
 });
 
 // Current User Profile State Notifier
 class CurrentUserNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   final AuthRepository _repository;
+  final LocalStore _store = LocalStore.instance;
 
-  CurrentUserNotifier(this._repository) : super(const AsyncValue.data(null)) {
-    _init();
-  }
+  CurrentUserNotifier(this._repository) : super(const AsyncValue.data(null));
 
-  void _init() {
-    try {
-      _repository.authStateChanges.listen((firebaseUser) async {
-        if (firebaseUser == null) {
-          // If we haven't manually set a demo user, keep it null
-          if (state.value?.uid.startsWith('local-') != true) {
-            state = const AsyncValue.data(null);
-          }
-        } else {
-          try {
-            final profile = await _repository.getUserProfile(firebaseUser.uid);
-            state = AsyncValue.data(profile ?? UserModel(
-              uid: firebaseUser.uid,
-              email: firebaseUser.email ?? '',
-              displayName: firebaseUser.displayName ?? 'موظف الأكاديمية',
-              role: UserRole.staff,
-            ));
-          } catch (_) {
-            state = AsyncValue.data(UserModel(
-              uid: firebaseUser.uid,
-              email: firebaseUser.email ?? '',
-              displayName: 'موظف الأكاديمية',
-              role: UserRole.staff,
-            ));
-          }
-        }
-      });
-    } catch (_) {
-      // Firebase not active on device, fallback to local auth
-      state = const AsyncValue.data(null);
-    }
-  }
-
-  Future<void> signIn(String email, String password) async {
+  Future<void> signIn(String usernameOrEmail, String password) async {
     state = const AsyncValue.loading();
-    final trimmedEmail = email.trim().toLowerCase();
-    
-    // First: Check local known accounts (Owner vs Staff)
-    if (trimmedEmail.contains('owner') || trimmedEmail == 'admin@swimmingworld.com') {
-      state = AsyncValue.data(
-        UserModel(
-          uid: 'local-owner-1',
-          email: trimmedEmail,
-          displayName: 'المالك العام',
-          role: UserRole.owner,
-        ),
-      );
-      return;
-    }
+    final trimmed = usernameOrEmail.trim();
 
-    if (trimmedEmail.isNotEmpty) {
-      // Default to staff for any valid staff email entered
-      state = AsyncValue.data(
-        UserModel(
-          uid: 'local-staff-1',
-          email: trimmedEmail,
-          displayName: 'موظف الاستقبال',
-          role: UserRole.staff,
-        ),
-      );
-      return;
-    }
-
-    // Try firebase if provided
-    try {
-      final user = await _repository.signInWithEmailPassword(email: email, password: password);
+    // 1. Check local registered users (LocalStore)
+    final user = _store.authenticate(trimmed, password);
+    if (user != null) {
       state = AsyncValue.data(user);
-    } catch (e, st) {
-      state = AsyncValue.error(e, st);
-      rethrow;
+      return;
+    }
+
+    // 2. Check default fallback if first time
+    if ((trimmed.toLowerCase() == 'owner' || trimmed.toLowerCase() == 'admin') && (password == '123' || password == '123456')) {
+      final ownerUser = UserModel(
+        uid: 'user-owner-default',
+        username: 'owner',
+        password: password,
+        displayName: 'المالك العام',
+        role: UserRole.owner,
+      );
+      state = AsyncValue.data(ownerUser);
+      return;
+    }
+
+    if (trimmed.toLowerCase() == 'staff' && (password == '123' || password == '123456')) {
+      final staffUser = UserModel(
+        uid: 'user-staff-default',
+        username: 'staff',
+        password: password,
+        displayName: 'موظف الاستقبال',
+        role: UserRole.staff,
+      );
+      state = AsyncValue.data(staffUser);
+      return;
+    }
+
+    // 3. Fallback to Firebase if configured
+    try {
+      final firebaseUser = await _repository.signInWithEmailPassword(email: trimmed, password: password);
+      state = AsyncValue.data(firebaseUser);
+    } catch (_) {
+      state = const AsyncValue.data(null);
+      throw Exception('اسم المستخدم أو كلمة المرور غير صحيحة');
     }
   }
 
   Future<void> signOut() async {
-    await _repository.signOut();
+    try {
+      await _repository.signOut();
+    } catch (_) {}
     state = const AsyncValue.data(null);
   }
 
-  // Developer switch for quick demo/testing between Staff and Owner
-  void switchDemoRole(UserRole role) {
-    final current = state.value;
-    if (current != null) {
-      state = AsyncValue.data(
-        UserModel(
-          uid: current.uid,
-          email: current.email,
-          displayName: current.displayName,
-          role: role,
-        ),
-      );
-    } else {
-      state = AsyncValue.data(
-        UserModel(
-          uid: 'demo-user',
-          email: 'demo@swimmingworld.com',
-          displayName: role == UserRole.owner ? 'المالك العام' : 'موظف الاستقبال',
-          role: role,
-        ),
-      );
-    }
+  // Quick QR Attendance Mode
+  void enterQuickQrMode() {
+    state = const AsyncValue.data(
+      UserModel(
+        uid: 'quick-qr-scanner',
+        username: 'qr_scanner',
+        password: '',
+        displayName: 'ماسح حضور سريع',
+        role: UserRole.staff,
+      ),
+    );
+  }
+
+  // Manage Users actions
+  void addNewUser({
+    required String username,
+    required String password,
+    required String displayName,
+    required UserRole role,
+    String? phoneNumber,
+  }) {
+    final newUser = UserModel(
+      uid: 'user-${DateTime.now().millisecondsSinceEpoch}',
+      username: username.trim(),
+      password: password.trim(),
+      displayName: displayName.trim(),
+      role: role,
+      phoneNumber: phoneNumber?.trim(),
+      createdAt: Timestamp.now(),
+    );
+    _store.addUser(newUser);
+  }
+
+  void updateUserPassword(String uid, String newPassword) {
+    _store.updateUserPassword(uid, newPassword.trim());
+  }
+
+  void toggleUserActive(String uid, bool isActive) {
+    _store.toggleUserActive(uid, isActive);
+  }
+
+  void deleteUser(String uid) {
+    _store.deleteUser(uid);
   }
 }
 
