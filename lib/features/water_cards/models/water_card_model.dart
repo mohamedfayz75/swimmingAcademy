@@ -34,7 +34,9 @@ class WaterCardModel {
       id: map['id'] as String? ?? '',
       cardDate: map['card_date_ms'] != null
           ? Timestamp.fromMillisecondsSinceEpoch(map['card_date_ms'] as int)
-          : Timestamp.now(),
+          : (map['card_date'] is Timestamp
+              ? map['card_date'] as Timestamp
+              : Timestamp.now()),
       cardName: map['card_name'] as String? ?? 'كرت مياة',
       poolType: map['pool_type'] as String? ?? AppConstants.poolSemiOlympic,
       cardPrice: (map['card_price'] as num?)?.toDouble() ?? 0.0,
