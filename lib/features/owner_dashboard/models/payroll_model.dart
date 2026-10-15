@@ -18,6 +18,28 @@ class CoachModel {
     this.groupsCount = 0,
   });
 
+  factory CoachModel.fromMap(Map<String, dynamic> map) {
+    return CoachModel(
+      coachId: map['coach_id'] as String? ?? '',
+      coachName: map['coach_name'] as String? ?? '',
+      phoneNumber: map['phone_number'] as String? ?? '',
+      specialty: map['specialty'] as String? ?? 'تعليم وسباحة عامة',
+      status: map['status'] as String? ?? 'نشط',
+      groupsCount: (map['groups_count'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'coach_id': coachId,
+      'coach_name': coachName,
+      'phone_number': phoneNumber,
+      'specialty': specialty,
+      'status': status,
+      'groups_count': groupsCount,
+    };
+  }
+
   factory CoachModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return CoachModel(
@@ -95,6 +117,44 @@ class PayrollModel {
   double get totalEarnings => totalSessions * sessionRate;
   double get netPayable => (totalEarnings - advancePayments) > 0 ? (totalEarnings - advancePayments) : 0.0;
   bool get isPaid => paymentStatus == 'تم القبض';
+
+  factory PayrollModel.fromMap(Map<String, dynamic> map) {
+    return PayrollModel(
+      coachId: map['coach_id'] as String? ?? '',
+      coachName: map['coach_name'] as String? ?? '',
+      sessions1To10: (map['sessions_1_to_10'] as num?)?.toInt() ?? 0,
+      sessions11To20: (map['sessions_11_to_20'] as num?)?.toInt() ?? 0,
+      sessions21To31: (map['sessions_21_to_31'] as num?)?.toInt() ?? 0,
+      totalSessions: (map['total_sessions'] as num?)?.toInt(),
+      sessionRate: (map['session_rate'] as num?)?.toDouble() ?? 100.0,
+      advancePayments: (map['advance_payments'] as num?)?.toDouble() ?? 0.0,
+      paymentStatus: map['payment_status'] as String? ?? 'معلق',
+      payoutMethod: map['payout_method'] as String? ?? AppConstants.paymentCash,
+      payoutNotes: map['payout_notes'] as String? ?? '',
+      payoutDate: map['payout_date_ms'] != null
+          ? Timestamp.fromMillisecondsSinceEpoch(map['payout_date_ms'] as int)
+          : Timestamp.now(),
+      monthYear: map['month_year'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'coach_id': coachId,
+      'coach_name': coachName,
+      'sessions_1_to_10': sessions1To10,
+      'sessions_11_to_20': sessions11To20,
+      'sessions_21_to_31': sessions21To31,
+      'total_sessions': totalSessions,
+      'session_rate': sessionRate,
+      'advance_payments': advancePayments,
+      'payment_status': paymentStatus,
+      'payout_method': payoutMethod,
+      'payout_notes': payoutNotes,
+      'payout_date_ms': payoutDate.millisecondsSinceEpoch,
+      'month_year': monthYear,
+    };
+  }
 
   factory PayrollModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
