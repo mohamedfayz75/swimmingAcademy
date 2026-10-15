@@ -4,9 +4,9 @@ class AppConstants {
   static const String appSubtitle = 'Swimming World Academy';
 
   // Default Branch
-  static const String defaultBranch = 'فرع المشاة';
+  static const String defaultBranch = 'دار المشاة';
   static const List<String> branches = [
-    'فرع المشاة',
+    'دار المشاة',
   ];
 
   // Firestore Collections
