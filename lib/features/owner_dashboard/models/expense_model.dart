@@ -17,6 +17,30 @@ class ExpenseModel {
     required this.monthYear,
   });
 
+  factory ExpenseModel.fromMap(Map<String, dynamic> map) {
+    return ExpenseModel(
+      id: map['id'] as String? ?? '',
+      category: map['category'] as String? ?? 'عام',
+      amount: (map['amount'] as num?)?.toDouble() ?? 0.0,
+      date: map['date_ms'] != null
+          ? Timestamp.fromMillisecondsSinceEpoch(map['date_ms'] as int)
+          : Timestamp.now(),
+      notes: map['notes'] as String? ?? '',
+      monthYear: map['month_year'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'category': category,
+      'amount': amount,
+      'date_ms': date.millisecondsSinceEpoch,
+      'notes': notes,
+      'month_year': monthYear,
+    };
+  }
+
   factory ExpenseModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return ExpenseModel(
