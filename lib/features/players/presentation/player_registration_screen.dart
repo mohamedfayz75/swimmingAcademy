@@ -19,7 +19,7 @@ class _PlayerRegistrationScreenState extends ConsumerState<PlayerRegistrationScr
   final _formKey = GlobalKey<FormState>();
 
   final _nameController = TextEditingController();
-  final _branchController = TextEditingController(text: 'الفرع الرئيسي');
+  final _branchController = TextEditingController(text: AppConstants.defaultBranch);
   final _phoneController = TextEditingController();
 
   DateTime _selectedBirthDate = DateTime(2015, 1, 1);
@@ -184,12 +184,13 @@ class _PlayerRegistrationScreenState extends ConsumerState<PlayerRegistrationScr
 
               const SizedBox(height: 16),
 
-              // Branch
+              // Branch (Fixed to دار المشاة)
               TextFormField(
                 controller: _branchController,
+                readOnly: true,
                 decoration: const InputDecoration(
                   labelText: 'الفرع *',
-                  hintText: 'مثال: الفرع الرئيسي / مسبح 1',
+                  hintText: 'دار المشاة',
                   prefixIcon: Icon(Icons.location_on, color: AppTheme.primaryBlue),
                 ),
                 validator: (val) => val == null || val.trim().isEmpty ? 'يرجى تحديد الفرع' : null,
