@@ -48,6 +48,36 @@ class UserModel {
     );
   }
 
+  factory UserModel.fromMap(Map<String, dynamic> map) {
+    return UserModel(
+      uid: map['uid'] as String? ?? '',
+      username: map['username'] as String? ?? '',
+      password: map['password'] as String? ?? '123',
+      email: map['email'] as String? ?? '',
+      displayName: map['display_name'] as String? ?? 'مستخدم',
+      role: userRoleFromString(map['role'] as String?),
+      phoneNumber: map['phone'] as String?,
+      isActive: map['is_active'] as bool? ?? true,
+      createdAt: map['created_at_ms'] != null
+          ? Timestamp.fromMillisecondsSinceEpoch(map['created_at_ms'] as int)
+          : null,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'uid': uid,
+      'username': username,
+      'password': password,
+      'email': email,
+      'display_name': displayName,
+      'role': role.value,
+      'phone': phoneNumber,
+      'is_active': isActive,
+      'created_at_ms': createdAt?.millisecondsSinceEpoch,
+    };
+  }
+
   factory UserModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return UserModel(
