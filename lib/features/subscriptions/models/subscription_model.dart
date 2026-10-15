@@ -76,6 +76,73 @@ class SubscriptionModel {
 
   bool get isDepositOnly => bookingStatus == AppConstants.statusDeposit;
 
+  factory SubscriptionModel.fromMap(Map<String, dynamic> map) {
+    final daysRaw = map['training_days'];
+    List<String> days = [];
+    if (daysRaw is List) {
+      days = daysRaw.map((e) => e.toString()).toList();
+    }
+    return SubscriptionModel(
+      id: map['id'] as String? ?? '',
+      playerCode: map['player_code'] as String? ?? '',
+      playerName: map['player_name'] as String? ?? '',
+      branch: map['branch'] as String? ?? AppConstants.defaultBranch,
+      groupCode: map['group_code'] as String? ?? '',
+      secondaryGroupCode: map['secondary_group_code'] as String?,
+      coachName: map['coach_name'] as String? ?? '',
+      trainingDays: days,
+      sessionTime: map['session_time'] as String? ?? '',
+      trainingType: map['training_type'] as String? ?? '',
+      stampCardFee: (map['stamp_card_fee'] as num?)?.toDouble() ?? 0.0,
+      amountRequired: (map['amount_required'] as num?)?.toDouble() ?? 0.0,
+      amountPaid: (map['amount_paid'] as num?)?.toDouble() ?? 0.0,
+      paymentMethod: map['payment_method'] as String? ?? AppConstants.paymentCash,
+      paymentDate: map['payment_date_ms'] != null
+          ? Timestamp.fromMillisecondsSinceEpoch(map['payment_date_ms'] as int)
+          : Timestamp.now(),
+      subscriptionType: map['subscription_type'] as String? ?? 'شهري (8 حصص)',
+      sessionsCount: (map['sessions_count'] as num?)?.toInt() ?? 8,
+      attendedSessions: (map['attended_sessions'] as num?)?.toInt() ?? 0,
+      excusedSessions: (map['excused_sessions'] as num?)?.toInt() ?? 0,
+      startDate: map['start_date_ms'] != null
+          ? Timestamp.fromMillisecondsSinceEpoch(map['start_date_ms'] as int)
+          : Timestamp.now(),
+      endDate: map['end_date_ms'] != null
+          ? Timestamp.fromMillisecondsSinceEpoch(map['end_date_ms'] as int)
+          : Timestamp.now(),
+      bookingStatus: map['booking_status'] as String? ?? AppConstants.statusActive,
+      createdBy: map['created_by'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'player_code': playerCode,
+      'player_name': playerName,
+      'branch': branch,
+      'group_code': groupCode,
+      'secondary_group_code': secondaryGroupCode,
+      'coach_name': coachName,
+      'training_days': trainingDays,
+      'session_time': sessionTime,
+      'training_type': trainingType,
+      'stamp_card_fee': stampCardFee,
+      'amount_required': amountRequired,
+      'amount_paid': amountPaid,
+      'payment_method': paymentMethod,
+      'payment_date_ms': paymentDate.millisecondsSinceEpoch,
+      'subscription_type': subscriptionType,
+      'sessions_count': sessionsCount,
+      'attended_sessions': attendedSessions,
+      'excused_sessions': excusedSessions,
+      'start_date_ms': startDate.millisecondsSinceEpoch,
+      'end_date_ms': endDate.millisecondsSinceEpoch,
+      'booking_status': bookingStatus,
+      'created_by': createdBy,
+    };
+  }
+
   factory SubscriptionModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     final daysRaw = data['training_days'];
