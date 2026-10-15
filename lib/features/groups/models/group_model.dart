@@ -34,6 +34,41 @@ class GroupModel {
   bool get isAdultPrivate => groupType.contains('كبار');
   bool get isSemiPrivate => groupType.contains('سيمي-برايفت');
 
+  factory GroupModel.fromMap(Map<String, dynamic> map) {
+    final daysRaw = map['training_days'];
+    List<String> days = [];
+    if (daysRaw is List) {
+      days = daysRaw.map((e) => e.toString()).toList();
+    }
+    return GroupModel(
+      groupCode: map['group_code'] as String? ?? '',
+      groupType: map['group_type'] as String? ?? AppConstants.groupTypeNormal,
+      coachId: map['coach_id'] as String? ?? '',
+      coachName: map['coach_name'] as String? ?? '',
+      trainingDays: days,
+      sessionTime: map['session_time'] as String? ?? '',
+      trainingType: map['training_type'] as String? ?? 'تعليم (مبتدئ)',
+      level: map['level'] as String? ?? 'مبتدئ',
+      maxCapacity: (map['max_capacity'] as num?)?.toInt() ?? 6,
+      currentRegistered: (map['current_registered'] as num?)?.toInt() ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'group_code': groupCode,
+      'group_type': groupType,
+      'coach_id': coachId,
+      'coach_name': coachName,
+      'training_days': trainingDays,
+      'session_time': sessionTime,
+      'training_type': trainingType,
+      'level': level,
+      'max_capacity': maxCapacity,
+      'current_registered': currentRegistered,
+    };
+  }
+
   factory GroupModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     final daysRaw = data['training_days'];
