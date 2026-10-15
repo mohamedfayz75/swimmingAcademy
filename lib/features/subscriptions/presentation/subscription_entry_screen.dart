@@ -99,7 +99,7 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
         final message =
-            'أهلاً بحضرتك في أكاديمية عالم السباحة (فرع المشاة) 🏊‍♂️\n'
+            'أهلاً بحضرتك في أكاديمية عالم السباحة (دار المشاة) 🏊‍♂️\n'
             'تم تسجيل اشتراك السباح (${sub.playerName}) بنجاح!\n'
             'المجموعة: ${sub.groupCode} - ${sub.coachName}\n'
             'المواعيد: ${sub.trainingDays.join("، ")} الساعة ${sub.sessionTime}\n'
