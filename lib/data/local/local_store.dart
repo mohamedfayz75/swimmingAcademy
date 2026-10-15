@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/constants/app_constants.dart';
 import '../../features/attendance/models/attendance_model.dart';
 import '../../features/groups/models/group_model.dart';
@@ -19,6 +22,8 @@ class LocalStore {
   LocalStore._internal() {
     _initSampleData();
   }
+
+  bool _isInitialized = false;
 
   // In-memory collections
   final List<UserModel> _users = [];
@@ -82,7 +87,187 @@ class LocalStore {
     yield* _expensesController.stream;
   }
 
+  Future<void> init() async {
+    if (_isInitialized) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final playersJson = prefs.getString('sw_players');
+
+      if (playersJson != null && playersJson.isNotEmpty) {
+        // Load Players
+        try {
+          final List list = jsonDecode(playersJson);
+          _players.clear();
+          for (final item in list) {
+            _players.add(PlayerModel.fromMap(Map<String, dynamic>.from(item)));
+          }
+        } catch (e) {
+          debugPrint('Error decoding sw_players: $e');
+        }
+
+        // Load Users
+        final usersJson = prefs.getString('sw_users');
+        if (usersJson != null && usersJson.isNotEmpty) {
+          try {
+            final List list = jsonDecode(usersJson);
+            _users.clear();
+            for (final item in list) {
+              _users.add(UserModel.fromMap(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_users: $e');
+          }
+        }
+
+        // Load Groups
+        final groupsJson = prefs.getString('sw_groups');
+        if (groupsJson != null && groupsJson.isNotEmpty) {
+          try {
+            final List list = jsonDecode(groupsJson);
+            _groups.clear();
+            for (final item in list) {
+              _groups.add(GroupModel.fromMap(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_groups: $e');
+          }
+        }
+
+        // Load Subscriptions
+        final subsJson = prefs.getString('sw_subscriptions');
+        if (subsJson != null && subsJson.isNotEmpty) {
+          try {
+            final List list = jsonDecode(subsJson);
+            _subscriptions.clear();
+            for (final item in list) {
+              _subscriptions.add(SubscriptionModel.fromMap(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_subscriptions: $e');
+          }
+        }
+
+        // Load Attendance
+        final attJson = prefs.getString('sw_attendance');
+        if (attJson != null && attJson.isNotEmpty) {
+          try {
+            final List list = jsonDecode(attJson);
+            _attendance.clear();
+            for (final item in list) {
+              _attendance.add(AttendanceModel.fromMap(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_attendance: $e');
+          }
+        }
+
+        // Load Water Cards
+        final wcJson = prefs.getString('sw_water_cards');
+        if (wcJson != null && wcJson.isNotEmpty) {
+          try {
+            final List list = jsonDecode(wcJson);
+            _waterCards.clear();
+            for (final item in list) {
+              _waterCards.add(WaterCardModel.fromMap(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_water_cards: $e');
+          }
+        }
+
+        // Load Coaches
+        final coachesJson = prefs.getString('sw_coaches');
+        if (coachesJson != null && coachesJson.isNotEmpty) {
+          try {
+            final List list = jsonDecode(coachesJson);
+            _coaches.clear();
+            for (final item in list) {
+              _coaches.add(CoachModel.fromMap(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_coaches: $e');
+          }
+        }
+
+        // Load Payrolls
+        final payrollsJson = prefs.getString('sw_payrolls');
+        if (payrollsJson != null && payrollsJson.isNotEmpty) {
+          try {
+            final List list = jsonDecode(payrollsJson);
+            _payrolls.clear();
+            for (final item in list) {
+              _payrolls.add(PayrollModel.fromMap(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_payrolls: $e');
+          }
+        }
+
+        // Load Expenses
+        final expJson = prefs.getString('sw_expenses');
+        if (expJson != null && expJson.isNotEmpty) {
+          try {
+            final List list = jsonDecode(expJson);
+            _expenses.clear();
+            for (final item in list) {
+              _expenses.add(ExpenseModel.fromMap(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_expenses: $e');
+          }
+        }
+      } else {
+        // First run on this device: initialize sample data and persist to storage
+        _initSampleData();
+        await _saveAll();
+      }
+    } catch (e) {
+      debugPrint('LocalStore.init error: $e');
+      if (_players.isEmpty) {
+        _initSampleData();
+      }
+    }
+
+    _isInitialized = true;
+    _notifyAll();
+  }
+
+  Future<void> _saveAll() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await Future.wait([
+        prefs.setString('sw_players', jsonEncode(_players.map((p) => p.toMap()).toList())),
+        prefs.setString('sw_subscriptions', jsonEncode(_subscriptions.map((s) => s.toMap()).toList())),
+        prefs.setString('sw_groups', jsonEncode(_groups.map((g) => g.toMap()).toList())),
+        prefs.setString('sw_attendance', jsonEncode(_attendance.map((a) => a.toMap()).toList())),
+        prefs.setString('sw_water_cards', jsonEncode(_waterCards.map((w) => w.toMap()).toList())),
+        prefs.setString('sw_coaches', jsonEncode(_coaches.map((c) => c.toMap()).toList())),
+        prefs.setString('sw_payrolls', jsonEncode(_payrolls.map((p) => p.toMap()).toList())),
+        prefs.setString('sw_expenses', jsonEncode(_expenses.map((e) => e.toMap()).toList())),
+        prefs.setString('sw_users', jsonEncode(_users.map((u) => u.toMap()).toList())),
+      ]);
+    } catch (e) {
+      debugPrint('LocalStore._saveAll error: $e');
+    }
+  }
+
+  Future<void> resetAllData() async {
+    _initSampleData();
+    await _saveAll();
+  }
+
   void _initSampleData() {
+    _users.clear();
+    _players.clear();
+    _groups.clear();
+    _subscriptions.clear();
+    _attendance.clear();
+    _waterCards.clear();
+    _coaches.clear();
+    _payrolls.clear();
+    _expenses.clear();
+
     final now = Timestamp.now();
     final currentMonth = '${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().year}';
 
@@ -324,6 +509,7 @@ class LocalStore {
   }
 
   void _notifyAll() {
+    _usersController.add(List.unmodifiable(_users));
     _playersController.add(List.unmodifiable(_players));
     _groupsController.add(List.unmodifiable(_groups));
     _subscriptionsController.add(List.unmodifiable(_subscriptions));
@@ -337,12 +523,21 @@ class LocalStore {
   List<PlayerModel> getPlayers() => List.unmodifiable(_players);
 
   String generateNextPlayerCode() {
-    return 'SW-${_players.length + 101}';
+    int maxCode = 100;
+    for (final p in _players) {
+      final match = RegExp(r'\d+').firstMatch(p.playerCode);
+      if (match != null) {
+        final val = int.tryParse(match.group(0)!) ?? 0;
+        if (val > maxCode) maxCode = val;
+      }
+    }
+    return 'SW-${maxCode + 1}';
   }
 
   PlayerModel addPlayer(PlayerModel player) {
     _players.insert(0, player);
     _playersController.add(List.unmodifiable(_players));
+    _saveAll();
     return player;
   }
 
@@ -361,6 +556,7 @@ class LocalStore {
   void addGroup(GroupModel group) {
     _groups.add(group);
     _groupsController.add(List.unmodifiable(_groups));
+    _saveAll();
   }
 
   GroupModel? getGroupByCode(String code) {
@@ -377,6 +573,7 @@ class LocalStore {
       final g = _groups[index];
       _groups[index] = g.copyWith(currentRegistered: g.currentRegistered + 1);
       _groupsController.add(List.unmodifiable(_groups));
+      _saveAll();
     }
   }
 
@@ -397,6 +594,7 @@ class LocalStore {
     }
 
     _subscriptionsController.add(List.unmodifiable(_subscriptions));
+    _saveAll();
     return model;
   }
 
@@ -421,6 +619,7 @@ class LocalStore {
         excusedSessions: sub.excusedSessions + 1,
       );
       _subscriptionsController.add(List.unmodifiable(_subscriptions));
+      _saveAll();
     }
   }
 
@@ -440,6 +639,7 @@ class LocalStore {
         paymentMethod: paymentMethod,
       );
       _subscriptionsController.add(List.unmodifiable(_subscriptions));
+      _saveAll();
     }
   }
 
@@ -460,6 +660,7 @@ class LocalStore {
       _subscriptionsController.add(List.unmodifiable(_subscriptions));
     }
     _attendanceController.add(List.unmodifiable(_attendance));
+    _saveAll();
     return model;
   }
 
@@ -484,6 +685,7 @@ class LocalStore {
       final current = _waterCards[index];
       _waterCards[index] = current.copyWith(usedSessions: newUsedCount);
       _waterCardsController.add(List.unmodifiable(_waterCards));
+      _saveAll();
     }
   }
 
@@ -503,6 +705,7 @@ class LocalStore {
         monthYear: card.monthlyClosingRef,
       ),
     );
+    _saveAll();
   }
 
   // --- Coaches & Payroll ---
@@ -511,6 +714,7 @@ class LocalStore {
   void addCoach(CoachModel coach) {
     _coaches.add(coach);
     _coachesController.add(List.unmodifiable(_coaches));
+    _saveAll();
   }
 
   void updateCoach(CoachModel coach) {
@@ -518,6 +722,7 @@ class LocalStore {
     if (index != -1) {
       _coaches[index] = coach;
       _coachesController.add(List.unmodifiable(_coaches));
+      _saveAll();
     }
   }
 
@@ -539,6 +744,7 @@ class LocalStore {
         ),
       );
     }
+    _saveAll();
   }
 
   void savePayroll(PayrollModel payroll) {
@@ -550,6 +756,7 @@ class LocalStore {
     } else {
       _payrolls.add(payroll);
     }
+    _saveAll();
   }
 
   List<PayrollModel> getPayrollForMonth(String monthYear) {
@@ -569,6 +776,7 @@ class LocalStore {
   void addExpense(ExpenseModel expense) {
     _expenses.insert(0, expense);
     _expensesController.add(List.unmodifiable(_expenses));
+    _saveAll();
   }
 
   GeneralAccountingModel calculateFinancials(String monthYear) {
@@ -621,6 +829,7 @@ class LocalStore {
   void addUser(UserModel user) {
     _users.add(user);
     _usersController.add(List.unmodifiable(_users));
+    _saveAll();
   }
 
   void updateUserPassword(String uid, String newPassword) {
@@ -628,6 +837,7 @@ class LocalStore {
     if (index != -1) {
       _users[index] = _users[index].copyWith(password: newPassword);
       _usersController.add(List.unmodifiable(_users));
+      _saveAll();
     }
   }
 
@@ -636,11 +846,13 @@ class LocalStore {
     if (index != -1) {
       _users[index] = _users[index].copyWith(isActive: isActive);
       _usersController.add(List.unmodifiable(_users));
+      _saveAll();
     }
   }
 
   void deleteUser(String uid) {
     _users.removeWhere((u) => u.uid == uid);
     _usersController.add(List.unmodifiable(_users));
+    _saveAll();
   }
 }
