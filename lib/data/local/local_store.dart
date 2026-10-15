@@ -12,6 +12,7 @@ import '../../features/owner_dashboard/models/payroll_model.dart';
 import '../../features/players/models/player_model.dart';
 import '../../features/subscriptions/models/subscription_model.dart';
 import '../../features/water_cards/models/water_card_model.dart';
+import '../../features/water_cards/models/pool_overdraft_model.dart';
 
 import '../../features/auth/models/user_model.dart';
 import '../../core/rbac/app_role.dart';
@@ -35,6 +36,7 @@ class LocalStore {
   final List<CoachModel> _coaches = [];
   final List<PayrollModel> _payrolls = [];
   final List<ExpenseModel> _expenses = [];
+  final List<PoolOverdraftNoteModel> _poolOverdraftNotes = [];
 
   // StreamControllers for real-time reactivity
   final _usersController = StreamController<List<UserModel>>.broadcast();
@@ -43,6 +45,7 @@ class LocalStore {
   final _subscriptionsController = StreamController<List<SubscriptionModel>>.broadcast();
   final _attendanceController = StreamController<List<AttendanceModel>>.broadcast();
   final _waterCardsController = StreamController<List<WaterCardModel>>.broadcast();
+  final _poolOverdraftNotesController = StreamController<List<PoolOverdraftNoteModel>>.broadcast();
   final _coachesController = StreamController<List<CoachModel>>.broadcast();
   final _expensesController = StreamController<List<ExpenseModel>>.broadcast();
 
@@ -75,6 +78,11 @@ class LocalStore {
   Stream<List<WaterCardModel>> get waterCardsStream async* {
     yield List.unmodifiable(_waterCards);
     yield* _waterCardsController.stream;
+  }
+
+  Stream<List<PoolOverdraftNoteModel>> get poolOverdraftNotesStream async* {
+    yield List.unmodifiable(_poolOverdraftNotes);
+    yield* _poolOverdraftNotesController.stream;
   }
 
   Stream<List<CoachModel>> get coachesStream async* {
@@ -217,6 +225,20 @@ class LocalStore {
             debugPrint('Error decoding sw_expenses: $e');
           }
         }
+
+        // Load Pool Overdraft Notes
+        final ponJson = prefs.getString('sw_pool_overdraft_notes');
+        if (ponJson != null && ponJson.isNotEmpty) {
+          try {
+            final List list = jsonDecode(ponJson);
+            _poolOverdraftNotes.clear();
+            for (final item in list) {
+              _poolOverdraftNotes.add(PoolOverdraftNoteModel.fromMap(Map<String, dynamic>.from(item)));
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_pool_overdraft_notes: $e');
+          }
+        }
       } else {
         // First run on this device: initialize sample data and persist to storage
         _initSampleData();
@@ -242,6 +264,7 @@ class LocalStore {
         prefs.setString('sw_groups', jsonEncode(_groups.map((g) => g.toMap()).toList())),
         prefs.setString('sw_attendance', jsonEncode(_attendance.map((a) => a.toMap()).toList())),
         prefs.setString('sw_water_cards', jsonEncode(_waterCards.map((w) => w.toMap()).toList())),
+        prefs.setString('sw_pool_overdraft_notes', jsonEncode(_poolOverdraftNotes.map((n) => n.toMap()).toList())),
         prefs.setString('sw_coaches', jsonEncode(_coaches.map((c) => c.toMap()).toList())),
         prefs.setString('sw_payrolls', jsonEncode(_payrolls.map((p) => p.toMap()).toList())),
         prefs.setString('sw_expenses', jsonEncode(_expenses.map((e) => e.toMap()).toList())),
@@ -264,6 +287,7 @@ class LocalStore {
     _subscriptions.clear();
     _attendance.clear();
     _waterCards.clear();
+    _poolOverdraftNotes.clear();
     _coaches.clear();
     _payrolls.clear();
     _expenses.clear();
@@ -757,21 +781,94 @@ class LocalStore {
   }
 
   // Auto-transfer of new water card purchase into General Expenses!
-  void addWaterCard(WaterCardModel card) {
-    _waterCards.add(card);
+  void addWaterCard(WaterCardModel card, {bool deductPendingOverdraft = false}) {
+    int effectiveUsed = card.usedSessions;
+    if (deductPendingOverdraft) {
+      final pendingNotes = _poolOverdraftNotes.where((n) => n.poolType == card.poolType && !n.isDeducted).toList();
+      final pendingCount = pendingNotes.fold(0, (sum, n) => sum + n.sessionsCount);
+      effectiveUsed += pendingCount;
+
+      // Remove the deducted pending notes (per user request: نخصمهم ونحذفهم من الملاحظات)
+      _poolOverdraftNotes.removeWhere((n) => n.poolType == card.poolType && !n.isDeducted);
+      _poolOverdraftNotesController.add(List.unmodifiable(_poolOverdraftNotes));
+    }
+
+    final cardToSave = card.copyWith(usedSessions: effectiveUsed);
+    _waterCards.add(cardToSave);
     _waterCardsController.add(List.unmodifiable(_waterCards));
 
     // Automated expense entry
     addExpense(
       ExpenseModel(
-        id: 'EXP-${card.id}',
+        id: 'EXP-${cardToSave.id}',
         category: 'كروت مياة',
-        amount: card.cardPrice,
-        date: card.cardDate,
-        notes: 'شراء وتفعيل ${card.cardName} (${card.poolType})',
-        monthYear: card.monthlyClosingRef,
+        amount: cardToSave.cardPrice,
+        date: cardToSave.cardDate,
+        notes: 'شراء وتفعيل ${cardToSave.cardName} (${cardToSave.poolType})',
+        monthYear: cardToSave.monthlyClosingRef,
       ),
     );
+    _saveAll();
+  }
+
+  // --- Pool Overdraft & Unpaid Sessions Notes (ملاحظات عجز الكروت) ---
+  List<PoolOverdraftNoteModel> getPoolOverdraftNotes({String? poolType, bool pendingOnly = true}) {
+    return _poolOverdraftNotes.where((n) {
+      if (poolType != null && n.poolType != poolType) return false;
+      if (pendingOnly && n.isDeducted) return false;
+      return true;
+    }).toList();
+  }
+
+  int getPendingOverdraftSessionsForPool(String poolType) {
+    return _poolOverdraftNotes
+        .where((n) => n.poolType == poolType && !n.isDeducted)
+        .fold(0, (sum, n) => sum + n.sessionsCount);
+  }
+
+  void addPoolOverdraftNote(PoolOverdraftNoteModel note) {
+    _poolOverdraftNotes.add(note);
+    _poolOverdraftNotesController.add(List.unmodifiable(_poolOverdraftNotes));
+    _saveAll();
+  }
+
+  void deletePoolOverdraftNote(String id) {
+    _poolOverdraftNotes.removeWhere((n) => n.id == id);
+    _poolOverdraftNotesController.add(List.unmodifiable(_poolOverdraftNotes));
+    _saveAll();
+  }
+
+  void deductOverdraftNoteFromCard({required String noteId, required String cardId}) {
+    final noteIndex = _poolOverdraftNotes.indexWhere((n) => n.id == noteId);
+    final cardIndex = _waterCards.indexWhere((c) => c.id == cardId);
+    if (noteIndex != -1 && cardIndex != -1) {
+      final note = _poolOverdraftNotes[noteIndex];
+      final card = _waterCards[cardIndex];
+
+      final newUsed = card.usedSessions + note.sessionsCount;
+      _waterCards[cardIndex] = card.copyWith(usedSessions: newUsed);
+      _waterCardsController.add(List.unmodifiable(_waterCards));
+
+      _poolOverdraftNotes.removeAt(noteIndex);
+      _poolOverdraftNotesController.add(List.unmodifiable(_poolOverdraftNotes));
+      _saveAll();
+    }
+  }
+
+  void deductAllPendingOverdraftForPool({required String poolType, required String cardId}) {
+    final cardIndex = _waterCards.indexWhere((c) => c.id == cardId);
+    if (cardIndex == -1) return;
+
+    final card = _waterCards[cardIndex];
+    final pendingNotes = _poolOverdraftNotes.where((n) => n.poolType == poolType && !n.isDeducted).toList();
+    if (pendingNotes.isEmpty) return;
+
+    final totalDeduct = pendingNotes.fold(0, (sum, n) => sum + n.sessionsCount);
+    _waterCards[cardIndex] = card.copyWith(usedSessions: card.usedSessions + totalDeduct);
+    _waterCardsController.add(List.unmodifiable(_waterCards));
+
+    _poolOverdraftNotes.removeWhere((n) => n.poolType == poolType && !n.isDeducted);
+    _poolOverdraftNotesController.add(List.unmodifiable(_poolOverdraftNotes));
     _saveAll();
   }
 
