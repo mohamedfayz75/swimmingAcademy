@@ -29,6 +29,34 @@ class WaterCardModel {
   bool get isLow => remainingSessions > 0 && remainingSessions <= 5;
   bool get isDepleted => remainingSessions <= 0;
 
+  factory WaterCardModel.fromMap(Map<String, dynamic> map) {
+    return WaterCardModel(
+      id: map['id'] as String? ?? '',
+      cardDate: map['card_date_ms'] != null
+          ? Timestamp.fromMillisecondsSinceEpoch(map['card_date_ms'] as int)
+          : Timestamp.now(),
+      cardName: map['card_name'] as String? ?? 'كرت مياة',
+      poolType: map['pool_type'] as String? ?? AppConstants.poolSemiOlympic,
+      cardPrice: (map['card_price'] as num?)?.toDouble() ?? 0.0,
+      totalSessions: (map['total_sessions'] as num?)?.toInt() ?? 40,
+      usedSessions: (map['used_sessions'] as num?)?.toInt() ?? 0,
+      monthlyClosingRef: map['monthly_closing_ref'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'card_date_ms': cardDate.millisecondsSinceEpoch,
+      'card_name': cardName,
+      'pool_type': poolType,
+      'card_price': cardPrice,
+      'total_sessions': totalSessions,
+      'used_sessions': usedSessions,
+      'monthly_closing_ref': monthlyClosingRef,
+    };
+  }
+
   factory WaterCardModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return WaterCardModel(
