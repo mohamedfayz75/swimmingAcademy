@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../../core/constants/app_constants.dart';
 
 class PlayerModel {
   final String playerCode;
@@ -21,12 +22,42 @@ class PlayerModel {
     required this.createdAt,
   });
 
+  factory PlayerModel.fromMap(Map<String, dynamic> map) {
+    return PlayerModel(
+      playerCode: map['player_code'] as String? ?? '',
+      playerName: map['player_name'] as String? ?? '',
+      branch: map['branch'] as String? ?? AppConstants.defaultBranch,
+      birthDate: map['birth_date_ms'] != null
+          ? Timestamp.fromMillisecondsSinceEpoch(map['birth_date_ms'] as int)
+          : Timestamp.now(),
+      guardianPhone: map['guardian_phone'] as String? ?? '',
+      customerType: map['customer_type'] as String? ?? 'عادي (جديد)',
+      qrCodeUrl: map['qr_code_url'] as String? ?? map['player_code'] as String? ?? '',
+      createdAt: map['created_at_ms'] != null
+          ? Timestamp.fromMillisecondsSinceEpoch(map['created_at_ms'] as int)
+          : Timestamp.now(),
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'player_code': playerCode,
+      'player_name': playerName,
+      'branch': branch,
+      'birth_date_ms': birthDate.millisecondsSinceEpoch,
+      'guardian_phone': guardianPhone,
+      'customer_type': customerType,
+      'qr_code_url': qrCodeUrl,
+      'created_at_ms': createdAt.millisecondsSinceEpoch,
+    };
+  }
+
   factory PlayerModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return PlayerModel(
       playerCode: data['player_code'] as String? ?? doc.id,
       playerName: data['player_name'] as String? ?? '',
-      branch: data['branch'] as String? ?? '',
+      branch: data['branch'] as String? ?? AppConstants.defaultBranch,
       birthDate: data['birth_date'] as Timestamp? ?? Timestamp.now(),
       guardianPhone: data['guardian_phone'] as String? ?? '',
       customerType: data['customer_type'] as String? ?? 'عادي',
