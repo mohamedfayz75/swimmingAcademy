@@ -577,6 +577,73 @@ class LocalStore {
     }
   }
 
+  void decrementGroupRegistered(String groupCode) {
+    final index = _groups.indexWhere((g) => g.groupCode == groupCode);
+    if (index != -1) {
+      final g = _groups[index];
+      final newCount = (g.currentRegistered - 1) > 0 ? (g.currentRegistered - 1) : 0;
+      _groups[index] = g.copyWith(currentRegistered: newCount);
+      _groupsController.add(List.unmodifiable(_groups));
+      _saveAll();
+    }
+  }
+
+  void updateGroup(GroupModel group) {
+    final index = _groups.indexWhere((g) => g.groupCode == group.groupCode);
+    if (index != -1) {
+      _groups[index] = group;
+      _groupsController.add(List.unmodifiable(_groups));
+      _saveAll();
+    }
+  }
+
+  void deleteGroup(String groupCode) {
+    _groups.removeWhere((g) => g.groupCode == groupCode);
+    _groupsController.add(List.unmodifiable(_groups));
+    _saveAll();
+  }
+
+  bool transferPlayerToGroup({
+    required String subscriptionId,
+    required String newGroupCode,
+  }) {
+    final subIndex = _subscriptions.indexWhere((s) => s.id == subscriptionId);
+    if (subIndex == -1) return false;
+
+    final sub = _subscriptions[subIndex];
+    final oldGroupCode = sub.groupCode;
+    if (oldGroupCode == newGroupCode) return true;
+
+    final newGroup = getGroupByCode(newGroupCode);
+    if (newGroup == null) return false;
+
+    // Decrement registered in old group
+    decrementGroupRegistered(oldGroupCode);
+
+    // Increment registered in new group
+    incrementGroupRegistered(newGroupCode);
+
+    // Update subscription with new group parameters
+    _subscriptions[subIndex] = sub.copyWith(
+      groupCode: newGroup.groupCode,
+      coachName: newGroup.coachName,
+      trainingDays: newGroup.trainingDays,
+      sessionTime: newGroup.sessionTime,
+      trainingType: newGroup.trainingType,
+    );
+
+    _subscriptionsController.add(List.unmodifiable(_subscriptions));
+    _saveAll();
+    return true;
+  }
+
+  List<SubscriptionModel> getActiveSubscriptionsForGroup(String groupCode) {
+    final clean = groupCode.trim().toUpperCase();
+    return _subscriptions
+        .where((s) => s.groupCode.trim().toUpperCase() == clean && !s.isExpired)
+        .toList();
+  }
+
   // --- Subscriptions ---
   List<SubscriptionModel> getSubscriptions() => List.unmodifiable(_subscriptions);
 
