@@ -21,6 +21,34 @@ class AttendanceModel {
     required this.recordedBy,
   });
 
+  factory AttendanceModel.fromMap(Map<String, dynamic> map) {
+    return AttendanceModel(
+      id: map['id'] as String? ?? '',
+      playerCode: map['player_code'] as String? ?? '',
+      playerName: map['player_name'] as String? ?? '',
+      groupCode: map['group_code'] as String? ?? '',
+      timestamp: map['timestamp_ms'] != null
+          ? Timestamp.fromMillisecondsSinceEpoch(map['timestamp_ms'] as int)
+          : Timestamp.now(),
+      sessionNumber: (map['session_number'] as num?)?.toInt() ?? 1,
+      status: map['status'] as String? ?? 'حاضر',
+      recordedBy: map['recorded_by'] as String? ?? '',
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'player_code': playerCode,
+      'player_name': playerName,
+      'group_code': groupCode,
+      'timestamp_ms': timestamp.millisecondsSinceEpoch,
+      'session_number': sessionNumber,
+      'status': status,
+      'recorded_by': recordedBy,
+    };
+  }
+
   factory AttendanceModel.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>? ?? {};
     return AttendanceModel(
