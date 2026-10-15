@@ -41,15 +41,46 @@ class LocalStore {
   final _coachesController = StreamController<List<CoachModel>>.broadcast();
   final _expensesController = StreamController<List<ExpenseModel>>.broadcast();
 
-  // Streams
-  Stream<List<UserModel>> get usersStream => _usersController.stream;
-  Stream<List<PlayerModel>> get playersStream => _playersController.stream;
-  Stream<List<GroupModel>> get groupsStream => _groupsController.stream;
-  Stream<List<SubscriptionModel>> get subscriptionsStream => _subscriptionsController.stream;
-  Stream<List<AttendanceModel>> get attendanceStream => _attendanceController.stream;
-  Stream<List<WaterCardModel>> get waterCardsStream => _waterCardsController.stream;
-  Stream<List<CoachModel>> get coachesStream => _coachesController.stream;
-  Stream<List<ExpenseModel>> get expensesStream => _expensesController.stream;
+  // Streams that emit current cached data immediately to any new listener
+  Stream<List<UserModel>> get usersStream async* {
+    yield List.unmodifiable(_users);
+    yield* _usersController.stream;
+  }
+
+  Stream<List<PlayerModel>> get playersStream async* {
+    yield List.unmodifiable(_players);
+    yield* _playersController.stream;
+  }
+
+  Stream<List<GroupModel>> get groupsStream async* {
+    yield List.unmodifiable(_groups);
+    yield* _groupsController.stream;
+  }
+
+  Stream<List<SubscriptionModel>> get subscriptionsStream async* {
+    yield List.unmodifiable(_subscriptions);
+    yield* _subscriptionsController.stream;
+  }
+
+  Stream<List<AttendanceModel>> get attendanceStream async* {
+    yield List.unmodifiable(_attendance);
+    yield* _attendanceController.stream;
+  }
+
+  Stream<List<WaterCardModel>> get waterCardsStream async* {
+    yield List.unmodifiable(_waterCards);
+    yield* _waterCardsController.stream;
+  }
+
+  Stream<List<CoachModel>> get coachesStream async* {
+    yield List.unmodifiable(_coaches);
+    yield* _coachesController.stream;
+  }
+
+  Stream<List<ExpenseModel>> get expensesStream async* {
+    yield List.unmodifiable(_expenses);
+    yield* _expensesController.stream;
+  }
 
   void _initSampleData() {
     final now = Timestamp.now();
