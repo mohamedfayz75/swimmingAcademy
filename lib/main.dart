@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'app_shell.dart';
 import 'core/theme/app_theme.dart';
 import 'data/firebase/firebase_options.dart';
+import 'data/local/local_store.dart';
 import 'features/auth/presentation/login_screen.dart';
 import 'features/auth/providers/auth_provider.dart';
 
@@ -18,6 +19,9 @@ Future<void> main() async {
   } catch (e) {
     debugPrint('Firebase initialization notice: $e');
   }
+
+  // Initialize offline persistent local store
+  await LocalStore.instance.init();
 
   runApp(
     const ProviderScope(
