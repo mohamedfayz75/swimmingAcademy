@@ -6,6 +6,8 @@ import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dialogs.dart';
 import '../../../core/utils/formatters.dart';
 import '../../../data/local/local_store.dart';
+import '../../groups/models/group_model.dart';
+import '../../groups/providers/group_provider.dart';
 import '../../players/models/player_model.dart';
 import '../models/subscription_model.dart';
 import '../providers/subscription_provider.dart';
@@ -20,6 +22,103 @@ class SubscriptionsListScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScreen> {
   String? _filter; // null = all, 'paid', 'remaining', 'deposit'
+
+  void _showTransferGroupDialog(SubscriptionModel sub) {
+    final allGroups = LocalStore.instance.getGroups();
+    final targetGroups = allGroups.where((g) => g.groupCode != sub.groupCode).toList();
+    GroupModel? selectedTargetGroup = targetGroups.isNotEmpty ? targetGroups.first : null;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Row(
+            children: [
+              const Icon(Icons.swap_horiz, color: AppTheme.warningOrange),
+              const SizedBox(width: 8),
+              Text('نقل السباح لمجموعة أخرى', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primaryBlue.withOpacity(0.06),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('السباح: ${sub.playerName} (${sub.playerCode})', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14)),
+                      const SizedBox(height: 4),
+                      Text('المجموعة الحالية: ${sub.groupCode} - ${sub.coachName}', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted)),
+                      Text('المواعيد الحالية: ${sub.trainingDays.join("، ")} (${sub.sessionTime})', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted)),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text('اختر المجموعة البديلة المراد النقل إليها:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                const SizedBox(height: 8),
+                if (targetGroups.isEmpty)
+                  Text('لا توجد مجموعات أخرى متاحة حالياً', style: GoogleFonts.cairo(color: AppTheme.errorRed))
+                else
+                  DropdownButtonFormField<GroupModel>(
+                    value: selectedTargetGroup,
+                    isExpanded: true,
+                    decoration: const InputDecoration(labelText: 'المجموعة البديلة *'),
+                    items: targetGroups.map((g) {
+                      final seatsText = g.availableSeats > 0 ? 'متاح ${g.availableSeats} مقاعد' : 'مكتملة';
+                      return DropdownMenuItem<GroupModel>(
+                        value: g,
+                        child: Text(
+                          '${g.groupCode} - ${g.coachName} (${g.trainingDays.join("، ")} ${g.sessionTime}) [$seatsText]',
+                          style: GoogleFonts.cairo(fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => selectedTargetGroup = val);
+                    },
+                  ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.warningOrange),
+              onPressed: selectedTargetGroup == null
+                  ? null
+                  : () {
+                      final ok = LocalStore.instance.transferPlayerToGroup(
+                        subscriptionId: sub.id,
+                        newGroupCode: selectedTargetGroup!.groupCode,
+                      );
+                      if (ok) {
+                        Navigator.pop(dialogCtx);
+                        AppDialogs.showSuccessSnackBar(
+                          context,
+                          'تم نقل السباح (${sub.playerName}) إلى مجموعة (${selectedTargetGroup!.groupCode} - ${selectedTargetGroup!.coachName}) بنجاح!',
+                        );
+                        ref.invalidate(subscriptionsStreamProvider);
+                        ref.invalidate(groupsStreamProvider);
+                      }
+                    },
+              child: const Text('تأكيد النقل'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
   void _showSettleBalanceDialog(SubscriptionModel sub) {
     final amountController = TextEditingController(text: '${sub.amountRemaining}');
@@ -317,20 +416,36 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                                       style: OutlinedButton.styleFrom(
                                         foregroundColor: AppTheme.warningOrange,
                                         side: const BorderSide(color: AppTheme.warningOrange),
+                                        padding: const EdgeInsets.symmetric(vertical: 6),
                                       ),
                                       onPressed: () => _showSettleBalanceDialog(sub),
-                                      icon: const Icon(Icons.payment, size: 16),
-                                      label: Text('سداد المتبقي', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                                      icon: const Icon(Icons.payment, size: 15),
+                                      label: Text('سداد', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
                                     ),
                                   ),
-                                if (!sub.isFullyPaid) const SizedBox(width: 8),
+                                if (!sub.isFullyPaid) const SizedBox(width: 6),
+
+                                // Transfer Group Button
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppTheme.accentTeal,
+                                      side: const BorderSide(color: AppTheme.accentTeal),
+                                      padding: const EdgeInsets.symmetric(vertical: 6),
+                                    ),
+                                    onPressed: () => _showTransferGroupDialog(sub),
+                                    icon: const Icon(Icons.swap_horiz, size: 15),
+                                    label: Text('نقل مجموعة', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
 
                                 // Quick Renewal Button
                                 Expanded(
                                   child: ElevatedButton.icon(
                                     style: ElevatedButton.styleFrom(
                                       backgroundColor: isExpired ? AppTheme.primaryBlue : AppTheme.accentTeal,
-                                      padding: const EdgeInsets.symmetric(vertical: 8),
+                                      padding: const EdgeInsets.symmetric(vertical: 6),
                                     ),
                                     onPressed: () {
                                       final player = LocalStore.instance.getPlayerByCode(sub.playerCode);
@@ -341,8 +456,8 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                                         ),
                                       );
                                     },
-                                    icon: const Icon(Icons.autorenew, size: 16),
-                                    label: Text('تجديد الاشتراك', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                                    icon: const Icon(Icons.autorenew, size: 15),
+                                    label: Text('تجديد', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
                                   ),
                                 ),
                               ],
