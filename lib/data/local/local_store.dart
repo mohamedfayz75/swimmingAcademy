@@ -1004,13 +1004,22 @@ class LocalStore {
 
   WaterCardModel? getActiveCardForPool(String poolType) {
     try {
-      return _waterCards.lastWhere((w) => w.poolType == poolType && w.isActive);
+      return _waterCards.lastWhere((w) => w.poolType == poolType && !w.isArchived && w.isActive);
     } catch (_) {
-      try {
-        return _waterCards.lastWhere((w) => w.poolType == poolType);
-      } catch (_) {
-        return null;
-      }
+      return null;
+    }
+  }
+
+  void archiveWaterCard(String cardId) {
+    final index = _waterCards.indexWhere((w) => w.id == cardId);
+    if (index != -1) {
+      final current = _waterCards[index];
+      _waterCards[index] = current.copyWith(
+        isArchived: true,
+        usedSessions: current.totalSessions,
+      );
+      _waterCardsController.add(List.unmodifiable(_waterCards));
+      _saveAll();
     }
   }
 
