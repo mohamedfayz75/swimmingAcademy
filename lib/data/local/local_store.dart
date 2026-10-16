@@ -790,7 +790,8 @@ class LocalStore {
   }
 
   void deletePlayer(String idOrCode) {
-    _players.removeWhere((p) => p.id == idOrCode || p.playerCode.toUpperCase() == idOrCode.toUpperCase());
+    final clean = idOrCode.trim().toUpperCase();
+    _players.removeWhere((p) => p.playerCode.trim().toUpperCase() == clean);
     _playersController.add(List.unmodifiable(_players));
     _saveAll();
   }
