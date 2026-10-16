@@ -36,6 +36,40 @@ class CoachesPayrollActionNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 
+  Future<void> updateCoach(CoachModel coach) async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.updateCoach(coach);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> setCoachStatus(CoachModel coach, String newStatus) async {
+    state = const AsyncValue.loading();
+    try {
+      final updated = coach.copyWith(status: newStatus);
+      await _repository.updateCoach(updated);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
+  Future<void> deleteCoach(String coachId) async {
+    state = const AsyncValue.loading();
+    try {
+      await _repository.deleteCoach(coachId);
+      state = const AsyncValue.data(null);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+      rethrow;
+    }
+  }
+
   Future<void> savePayroll(PayrollModel payroll) async {
     state = const AsyncValue.loading();
     try {
