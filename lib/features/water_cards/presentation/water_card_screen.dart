@@ -20,6 +20,102 @@ class WaterCardScreen extends ConsumerStatefulWidget {
 }
 
 class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
+  // --- تأكيد حفظ وترحيل الكارت المكتمل إلى الأرشيف والماليات ليختفي من الشاشة ---
+  Future<void> _confirmArchiveCard(WaterCardModel card) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.archive, color: AppTheme.successGreen),
+            const SizedBox(width: 8),
+            Text('تأكيد حفظ وترحيل الكارت', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'هل تريد حفظ وإتمام كارت «${card.cardName}» وترحيله إلى الأرشيف والماليات الآن؟',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.backgroundLight,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blueGrey.shade100),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('إجمالي حصص الكارت:', style: GoogleFonts.cairo(fontSize: 12)),
+                      Text('${card.totalSessions} حصة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12)),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('الحصص المستهلكة:', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.warningOrange)),
+                      Text('${card.usedSessions} حصة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.warningOrange)),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('المبلغ المسجل بالماليات:', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.primaryBlue)),
+                      Text('${card.cardPrice} ج.م', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.primaryBlue)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '✔️ بمجرد الحفظ، سيختفي الكارت من الشاشة النشطة ليكون المسبح جاهزاً لإصدار كارت جديد، وسيكون محفوظاً بشكل دائم في «أرشيف الكروت» وقسم الماليات.',
+              style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted, height: 1.4),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('إلغاء', style: GoogleFonts.cairo(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.successGreen,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: const Icon(Icons.check_circle_outline, size: 18),
+            label: Text('تأكيد الحفظ والإغلاق', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      LocalStore.instance.archiveWaterCard(card.id);
+      await LocalStore.instance.saveAllExplicitly();
+      if (mounted) {
+        AppDialogs.showSuccessSnackBar(
+          context,
+          '🎉 تم حفظ وإتمام كارت «${card.cardName}» بنجاح! اختفى من الشاشة وأصبح محفوظاً في الأرشيف والماليات.',
+        );
+        setState(() {});
+      }
+    }
+  }
+
   // --- إظهار نافذة إصدار كارت مياة جديد مع فحص الحصص المعلقة ---
   void _showNewCardDialog({String? initialPoolType}) {
     String poolType = initialPoolType ?? AppConstants.poolSemiOlympic;
@@ -385,11 +481,15 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
 
                   if (context.mounted) {
                     Navigator.pop(ctx);
-                    AppDialogs.showSuccessSnackBar(
-                      context,
-                      'تم تحديث وتثبيت استهلاك كارت ${card.cardName}! المستهلك: $newTotalUsed | المتبقي: ${card.totalSessions - newTotalUsed}',
-                    );
-                    setState(() {});
+                    if (newTotalUsed >= card.totalSessions) {
+                      _confirmArchiveCard(card.copyWith(usedSessions: newTotalUsed));
+                    } else {
+                      AppDialogs.showSuccessSnackBar(
+                        context,
+                        'تم تحديث وتثبيت استهلاك كارت ${card.cardName}! المستهلك: $newTotalUsed | المتبقي: ${card.totalSessions - newTotalUsed}',
+                      );
+                      setState(() {});
+                    }
                   }
                 },
               ),
@@ -982,35 +1082,100 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 10),
+                const SizedBox(height: 12),
 
-                // زر الحفظ الصريح وتثبيت الاستهلاك في الذاكرة الدائمة
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppTheme.successGreen,
-                      foregroundColor: Colors.white,
-                      elevation: 1,
-                      padding: const EdgeInsets.symmetric(vertical: 11),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                if (card.remainingSessions <= 0) ...[
+                  // بطاقة تنبيه بأن الكارت مكتمل تماماً وجاهز للترحيل والاختفاء
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppTheme.successGreen.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppTheme.successGreen, width: 1.5),
                     ),
-                    onPressed: () async {
-                      await LocalStore.instance.saveAllExplicitly();
-                      if (context.mounted) {
-                        AppDialogs.showSuccessSnackBar(
-                          context,
-                          '💾 تم حفظ وتثبيت استهلاك ورصيد كارت «${card.cardName}» بنجاح في الذاكرة الدائمة!',
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.save_rounded, size: 20),
-                    label: Text(
-                      'حفظ وتثبيت استهلاك الكارت الآن 💾',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                    child: Column(
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.check_circle, color: AppTheme.successGreen, size: 22),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'تم استهلاك رصيد هذا الكارت بالكامل (${card.totalSessions} حصة)!',
+                                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.successGreen),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'اضغط على زر الحفظ والإغلاق أدناه؛ ليتم تثبيت الكارت في الماليات ونقله للأرشيف ويختفي من الشاشة ليصبح المسبح جاهزاً لكارت جديد.',
+                          style: GoogleFonts.cairo(fontSize: 11, color: Colors.blueGrey.shade800),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.successGreen,
+                        foregroundColor: Colors.white,
+                        elevation: 2,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () => _confirmArchiveCard(card),
+                      icon: const Icon(Icons.archive_rounded, size: 20),
+                      label: Text(
+                        'حفظ وإغلاق الكارت وترحيله للماليات والأرشيف 💾',
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  // زر الحفظ الصريح وتثبيت الاستهلاك في الذاكرة الدائمة
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.successGreen,
+                        foregroundColor: Colors.white,
+                        elevation: 1,
+                        padding: const EdgeInsets.symmetric(vertical: 11),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                      onPressed: () async {
+                        await LocalStore.instance.saveAllExplicitly();
+                        if (context.mounted) {
+                          AppDialogs.showSuccessSnackBar(
+                            context,
+                            '💾 تم حفظ وتثبيت استهلاك ورصيد كارت «${card.cardName}» بنجاح في الذاكرة الدائمة! (المتبقي: ${card.remainingSessions} حصة)',
+                          );
+                        }
+                      },
+                      icon: const Icon(Icons.save_rounded, size: 20),
+                      label: Text(
+                        'حفظ وتثبيت استهلاك الكارت الآن 💾',
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.warningOrange,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                    ),
+                    onPressed: () => _confirmArchiveCard(card),
+                    icon: const Icon(Icons.archive_outlined, size: 16),
+                    label: Text(
+                      'إغلاق هذا الكارت وترحيله للأرشيف والماليات مبكراً',
+                      style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ],
               ],
             ),
           ],
@@ -1381,12 +1546,12 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                                 : 0.0;
                             final dateStr = AppFormatters.formatTimestamp(card.cardDate);
 
-                            Color statusColor = card.isDepleted
-                                ? AppTheme.errorRed
-                                : (card.isLow ? AppTheme.warningOrange : AppTheme.successGreen);
-                            String statusText = card.isDepleted
-                                ? 'منتهي ومستنفذ'
-                                : (card.isLow ? 'رصيد قليل' : 'نشط');
+                            Color statusColor = card.isArchived
+                                ? AppTheme.primaryBlue
+                                : (card.isDepleted ? AppTheme.errorRed : (card.isLow ? AppTheme.warningOrange : AppTheme.successGreen));
+                            String statusText = card.isArchived
+                                ? 'مكتمل ومحفوظ بالماليات والأرشيف ✔️'
+                                : (card.isDepleted ? 'منتهي ومستنفذ' : (card.isLow ? 'رصيد قليل' : 'نشط'));
 
                             return Card(
                               elevation: 1.5,
