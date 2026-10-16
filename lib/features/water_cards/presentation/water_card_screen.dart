@@ -203,9 +203,9 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
   }
 
   // --- تسجيل استهلاك الحصص بالأرقام مباشرة ---
-  void _showRecordSessionsDialog(WaterCardModel card) {
+  void _showRecordSessionsDialog(WaterCardModel card, {required bool isOwner}) {
     final countController = TextEditingController();
-    bool isAdding = true; // true = إضافة للاستهلاك الحالي, false = كتابة الرقم الإجمالي مباشرة
+    bool isAdding = true; // Staff can only add sessions; Owner can edit total
 
     showDialog(
       context: context,
@@ -234,31 +234,47 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // اختيار طريقة التسجيل
-                  SegmentedButton<bool>(
-                    segments: const [
-                      ButtonSegment<bool>(
-                        value: true,
-                        label: Text('إضافة للاستهلاك (+)', style: TextStyle(fontSize: 12)),
-                        icon: Icon(Icons.add, size: 16),
+                  // اختيار طريقة التسجيل (تعديل الإجمالي متاح فقط للمالك)
+                  if (isOwner) ...[
+                    SegmentedButton<bool>(
+                      segments: const [
+                        ButtonSegment<bool>(
+                          value: true,
+                          label: Text('إضافة للاستهلاك (+)', style: TextStyle(fontSize: 12)),
+                          icon: Icon(Icons.add, size: 16),
+                        ),
+                        ButtonSegment<bool>(
+                          value: false,
+                          label: Text('تعديل الإجمالي', style: TextStyle(fontSize: 12)),
+                          icon: Icon(Icons.edit, size: 16),
+                        ),
+                      ],
+                      selected: {isAdding},
+                      onSelectionChanged: (set) {
+                        setModalState(() {
+                          isAdding = set.first;
+                          if (!isAdding && countController.text.isEmpty) {
+                            countController.text = '${card.usedSessions}';
+                          }
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ] else ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryBlue.withOpacity(0.08),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.2)),
                       ),
-                      ButtonSegment<bool>(
-                        value: false,
-                        label: Text('تعديل الإجمالي', style: TextStyle(fontSize: 12)),
-                        icon: Icon(Icons.edit, size: 16),
+                      child: Text(
+                        '💡 إضافة حصص مستهلكة: اكتب عدد الحصص المنفذة اليوم لإضافتها فوراً لرصيد الكارت.',
+                        style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.primaryBlue, fontWeight: FontWeight.bold),
                       ),
-                    ],
-                    selected: {isAdding},
-                    onSelectionChanged: (set) {
-                      setModalState(() {
-                        isAdding = set.first;
-                        if (!isAdding && countController.text.isEmpty) {
-                          countController.text = '${card.usedSessions}';
-                        }
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
 
                   // خانة كتابة عدد الحصص
                   TextField(
@@ -348,8 +364,8 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
                 icon: const Icon(Icons.check, size: 18),
-                label: Text('تأكيد تسجيل الاستهلاك', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                onPressed: () {
+                label: Text('تأكيد وحفظ الاستهلاك', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                onPressed: () async {
                   final enteredVal = int.tryParse(countController.text.trim()) ?? 0;
                   if (enteredVal <= 0 && isAdding) {
                     AppDialogs.showErrorSnackBar(context, 'يرجى كتابة عدد الحصص بالأرقام');
@@ -357,14 +373,24 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                   }
 
                   final newTotalUsed = isAdding ? (card.usedSessions + enteredVal) : enteredVal;
-                  LocalStore.instance.updateWaterCardSessions(card.id, newTotalUsed);
 
-                  Navigator.pop(ctx);
-                  AppDialogs.showSuccessSnackBar(
-                    context,
-                    'تم تحديث استهلاك كارت ${card.cardName}! المستهلك: $newTotalUsed | المتبقي: ${card.totalSessions - newTotalUsed}',
-                  );
-                  setState(() {});
+                  // التحقق من الصلاحية: لا يمكن تقليل الحصص المستهلكة إلا بواسطة المالك
+                  if (!isOwner && newTotalUsed < card.usedSessions) {
+                    AppDialogs.showErrorSnackBar(context, 'عفواً، لا يمكن تقليل عدد الحصص المستهلكة إلا بواسطة المالك');
+                    return;
+                  }
+
+                  LocalStore.instance.updateWaterCardSessions(card.id, newTotalUsed);
+                  await LocalStore.instance.saveAllExplicitly();
+
+                  if (context.mounted) {
+                    Navigator.pop(ctx);
+                    AppDialogs.showSuccessSnackBar(
+                      context,
+                      'تم تحديث وتثبيت استهلاك كارت ${card.cardName}! المستهلك: $newTotalUsed | المتبقي: ${card.totalSessions - newTotalUsed}',
+                    );
+                    setState(() {});
+                  }
                 },
               ),
             ],
@@ -617,21 +643,50 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                           ],
                         ),
                         const SizedBox(height: 14),
-                        // زر إضافة كارت جديد البارز
-                        ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: AppTheme.primaryBlue,
-                            elevation: 0,
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          onPressed: () => _showNewCardDialog(),
-                          icon: const Icon(Icons.add_card, size: 20, color: AppTheme.primaryBlue),
-                          label: Text(
-                            'إصدار / شراء كارت مياة جديد (+)',
-                            style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
-                          ),
+                        // أزرار التحكم الرئيسية
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 3,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white,
+                                  foregroundColor: AppTheme.primaryBlue,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                onPressed: () => _showNewCardDialog(),
+                                icon: const Icon(Icons.add_card, size: 18, color: AppTheme.primaryBlue),
+                                label: Text(
+                                  'إصدار كارت جديد (+)',
+                                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 3,
+                              child: ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.white.withOpacity(0.2),
+                                  foregroundColor: Colors.white,
+                                  elevation: 0,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: const BorderSide(color: Colors.white70),
+                                  ),
+                                ),
+                                onPressed: () => _showCardsArchiveDialog(),
+                                icon: const Icon(Icons.folder_open, size: 18, color: Colors.white),
+                                label: Text(
+                                  '📂 أرشيف الكروت',
+                                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -670,7 +725,7 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                   const SizedBox(height: 8),
 
                   if (semiOlympicCard != null)
-                    _buildPoolCardView(semiOlympicCard)
+                    _buildPoolCardView(semiOlympicCard, isOwner: isOwner)
                   else
                     _buildEmptyPoolCard(AppConstants.poolSemiOlympic),
 
@@ -718,7 +773,7 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                   const SizedBox(height: 8),
 
                   if (recreationalCard != null)
-                    _buildPoolCardView(recreationalCard)
+                    _buildPoolCardView(recreationalCard, isOwner: isOwner)
                   else
                     _buildEmptyPoolCard(AppConstants.poolRecreational),
 
@@ -744,7 +799,7 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
   }
 
   // --- كارت المسبح النشط ---
-  Widget _buildPoolCardView(WaterCardModel card) {
+  Widget _buildPoolCardView(WaterCardModel card, {required bool isOwner}) {
     Color badgeColor = AppTheme.successGreen;
     String badgeText = 'نشط (رصيد كافٍ)';
     if (card.isDepleted) {
@@ -841,17 +896,31 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                     Row(
                       children: [
                         IconButton(
-                          icon: const Icon(Icons.remove_circle, color: AppTheme.errorRed, size: 26),
-                          tooltip: 'خصم حصة واحدة (-1)',
-                          onPressed: card.usedSessions > 0
-                              ? () {
-                                  LocalStore.instance.updateWaterCardSessions(card.id, card.usedSessions - 1);
-                                  setState(() {});
-                                }
-                              : null,
+                          icon: Icon(
+                            Icons.remove_circle,
+                            color: isOwner ? AppTheme.errorRed : Colors.grey.shade400,
+                            size: 26,
+                          ),
+                          tooltip: isOwner
+                              ? 'خصم حصة واحدة (-1)'
+                              : 'عفواً، مسموح للمالك فقط تقليل الحصص المستهلكة',
+                          onPressed: () async {
+                            if (!isOwner) {
+                              AppDialogs.showWarningSnackBar(
+                                context,
+                                'عفواً، لا يمكن تقليل الحصص المستهلكة إلا بواسطة المالك',
+                              );
+                              return;
+                            }
+                            if (card.usedSessions > 0) {
+                              LocalStore.instance.updateWaterCardSessions(card.id, card.usedSessions - 1);
+                              await LocalStore.instance.saveAllExplicitly();
+                              setState(() {});
+                            }
+                          },
                         ),
                         InkWell(
-                          onTap: () => _showRecordSessionsDialog(card),
+                          onTap: () => _showRecordSessionsDialog(card, isOwner: isOwner),
                           borderRadius: BorderRadius.circular(8),
                           child: Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -880,8 +949,9 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                           icon: const Icon(Icons.add_circle, color: AppTheme.accentTeal, size: 26),
                           tooltip: 'إضافة حصة واحدة (+1)',
                           onPressed: card.remainingSessions > 0
-                              ? () {
+                              ? () async {
                                   LocalStore.instance.updateWaterCardSessions(card.id, card.usedSessions + 1);
+                                  await LocalStore.instance.saveAllExplicitly();
                                   setState(() {});
                                 }
                               : null,
@@ -904,11 +974,41 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                       side: const BorderSide(color: AppTheme.accentTeal, width: 1.2),
                     ),
                   ),
-                  onPressed: () => _showRecordSessionsDialog(card),
+                  onPressed: () => _showRecordSessionsDialog(card, isOwner: isOwner),
                   icon: const Icon(Icons.edit_note, size: 20),
                   label: Text(
                     'كتابة عدد الحصص المستهلكة بالأرقام (تسجيل سريع)',
                     style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
+
+                const SizedBox(height: 10),
+
+                // زر الحفظ الصريح وتثبيت الاستهلاك في الذاكرة الدائمة
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.successGreen,
+                      foregroundColor: Colors.white,
+                      elevation: 1,
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () async {
+                      await LocalStore.instance.saveAllExplicitly();
+                      if (context.mounted) {
+                        AppDialogs.showSuccessSnackBar(
+                          context,
+                          '💾 تم حفظ وتثبيت استهلاك ورصيد كارت «${card.cardName}» بنجاح في الذاكرة الدائمة!',
+                        );
+                      }
+                    },
+                    icon: const Icon(Icons.save_rounded, size: 20),
+                    label: Text(
+                      'حفظ وتثبيت استهلاك الكارت الآن 💾',
+                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
                   ),
                 ),
               ],
@@ -1132,6 +1232,319 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
             Text(label, style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted)),
           ],
         ),
+      ),
+    );
+  }
+
+  // --- نافذة أرشيف وسجل كروت المياة السابقة ---
+  void _showCardsArchiveDialog() {
+    String selectedFilter = 'all'; // 'all', semi, rec, 'depleted', 'active'
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final allCards = LocalStore.instance.getWaterCards();
+
+          final filteredCards = allCards.where((card) {
+            if (selectedFilter == 'all') return true;
+            if (selectedFilter == AppConstants.poolSemiOlympic) return card.poolType == AppConstants.poolSemiOlympic;
+            if (selectedFilter == AppConstants.poolRecreational) return card.poolType == AppConstants.poolRecreational;
+            if (selectedFilter == 'depleted') return card.isDepleted;
+            if (selectedFilter == 'active') return !card.isDepleted;
+            return true;
+          }).toList();
+
+          // Statistics
+          final totalCost = allCards.fold<double>(0.0, (acc, c) => acc + c.cardPrice);
+          final totalSessionsSum = allCards.fold<int>(0, (acc, c) => acc + c.totalSessions);
+          final usedSessionsSum = allCards.fold<int>(0, (acc, c) => acc + c.usedSessions);
+          final remainingSessionsSum = totalSessionsSum - usedSessionsSum;
+
+          return Container(
+            height: MediaQuery.of(context).size.height * 0.88,
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // مقبض السحب
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 12, bottom: 8),
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primaryBlue.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.archive_outlined, color: AppTheme.primaryBlue, size: 24),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'أرشيف وسجل كروت المياة السابقة',
+                              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                            ),
+                            Text(
+                              'سجل تاريخي كامل لجميع الكروت الصادرة والمنتهية والنشطة',
+                              style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(ctx),
+                      ),
+                    ],
+                  ),
+                ),
+                const Divider(height: 1),
+
+                // ملخص إحصائيات الأرشيف
+                Container(
+                  color: AppTheme.backgroundLight,
+                  padding: const EdgeInsets.all(12),
+                  child: Row(
+                    children: [
+                      _buildArchiveStat('إجمالي الكروت', '${allCards.length}', AppTheme.primaryBlue),
+                      const SizedBox(width: 8),
+                      _buildArchiveStat('إجمالي المصروفات', '${totalCost.toStringAsFixed(0)} ج.م', AppTheme.accentTeal),
+                      const SizedBox(width: 8),
+                      _buildArchiveStat('المستهلك', '$usedSessionsSum حصة', AppTheme.warningOrange),
+                      const SizedBox(width: 8),
+                      _buildArchiveStat('المتبقي', '$remainingSessionsSum حصة', AppTheme.successGreen),
+                    ],
+                  ),
+                ),
+
+                // فلاتر التصفية
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      _buildFilterChip('الكل (${allCards.length})', 'all', selectedFilter, (val) => setModalState(() => selectedFilter = val)),
+                      _buildFilterChip('🏊 نصف أولمبي', AppConstants.poolSemiOlympic, selectedFilter, (val) => setModalState(() => selectedFilter = val)),
+                      _buildFilterChip('🏖️ ترفيهي', AppConstants.poolRecreational, selectedFilter, (val) => setModalState(() => selectedFilter = val)),
+                      _buildFilterChip('🔴 منتهية', 'depleted', selectedFilter, (val) => setModalState(() => selectedFilter = val)),
+                      _buildFilterChip('🟢 نشطة', 'active', selectedFilter, (val) => setModalState(() => selectedFilter = val)),
+                    ],
+                  ),
+                ),
+
+                // قائمة الكروت
+                Expanded(
+                  child: filteredCards.isEmpty
+                      ? Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.inventory_2_outlined, size: 56, color: Colors.grey.shade400),
+                              const SizedBox(height: 12),
+                              Text(
+                                'لا توجد كروت تطابق هذا الفلتر',
+                                style: GoogleFonts.cairo(fontSize: 14, color: AppTheme.textMuted),
+                              ),
+                            ],
+                          ),
+                        )
+                      : ListView.separated(
+                          padding: const EdgeInsets.all(16),
+                          itemCount: filteredCards.length,
+                          separatorBuilder: (_, __) => const SizedBox(height: 12),
+                          itemBuilder: (context, index) {
+                            final card = filteredCards[index];
+                            final isSemi = card.poolType == AppConstants.poolSemiOlympic;
+                            final ratio = card.totalSessions > 0
+                                ? (card.usedSessions / card.totalSessions).clamp(0.0, 1.0)
+                                : 0.0;
+                            final dateStr = AppFormatters.formatTimestamp(card.cardDate);
+
+                            Color statusColor = card.isDepleted
+                                ? AppTheme.errorRed
+                                : (card.isLow ? AppTheme.warningOrange : AppTheme.successGreen);
+                            String statusText = card.isDepleted
+                                ? 'منتهي ومستنفذ'
+                                : (card.isLow ? 'رصيد قليل' : 'نشط');
+
+                            return Card(
+                              elevation: 1.5,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                                side: BorderSide(
+                                  color: statusColor.withOpacity(0.3),
+                                  width: 1.2,
+                                ),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(14),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Text(isSemi ? '🏊 ' : '🏖️ ', style: const TextStyle(fontSize: 18)),
+                                            Text(
+                                              card.cardName,
+                                              style: GoogleFonts.cairo(
+                                                fontWeight: FontWeight.bold,
+                                                fontSize: 15,
+                                                color: AppTheme.primaryBlue,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        Container(
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                          decoration: BoxDecoration(
+                                            color: statusColor.withOpacity(0.12),
+                                            borderRadius: BorderRadius.circular(8),
+                                            border: Border.all(color: statusColor),
+                                          ),
+                                          child: Text(
+                                            statusText,
+                                            style: GoogleFonts.cairo(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.bold,
+                                              color: statusColor,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 6),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.calendar_today, size: 13, color: AppTheme.textMuted),
+                                        const SizedBox(width: 4),
+                                        Text('تاريخ الإصدار: $dateStr', style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted)),
+                                        const Spacer(),
+                                        Text(
+                                          'السعر: ${AppFormatters.formatCurrency(card.cardPrice)}',
+                                          style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 10),
+                                    // شريط الاستهلاك
+                                    ClipRRect(
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: LinearProgressIndicator(
+                                        value: ratio,
+                                        minHeight: 6,
+                                        backgroundColor: Colors.grey.shade200,
+                                        valueColor: AlwaysStoppedAnimation<Color>(statusColor),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'إجمالي الحصص: ${card.totalSessions}',
+                                          style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600),
+                                        ),
+                                        Text(
+                                          'المستهلك: ${card.usedSessions}',
+                                          style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.warningOrange),
+                                        ),
+                                        Text(
+                                          'المتبقي: ${card.remainingSessions}',
+                                          style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.successGreen),
+                                        ),
+                                      ],
+                                    ),
+                                    if (card.monthlyClosingRef != null && card.monthlyClosingRef!.isNotEmpty) ...[
+                                      const SizedBox(height: 6),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blueGrey.withOpacity(0.08),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          'مرجع التقفيل الشهري: ${card.monthlyClosingRef}',
+                                          style: GoogleFonts.cairo(fontSize: 10, color: Colors.blueGrey.shade700),
+                                        ),
+                                      ),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildArchiveStat(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: color),
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Text(
+              label,
+              style: GoogleFonts.cairo(fontSize: 10, color: AppTheme.textMuted),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip(String label, String value, String currentSelected, Function(String) onSelect) {
+    final isSelected = currentSelected == value;
+    return Padding(
+      padding: const EdgeInsets.only(left: 6),
+      child: ChoiceChip(
+        label: Text(label, style: GoogleFonts.cairo(fontSize: 12, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+        selected: isSelected,
+        selectedColor: AppTheme.primaryBlue.withOpacity(0.18),
+        onSelected: (_) => onSelect(value),
       ),
     );
   }
