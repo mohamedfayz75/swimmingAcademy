@@ -9,9 +9,19 @@ class CoachesPayrollRepository {
     return _store.coachesStream;
   }
 
-  // Add or update coach
+  // Add coach
   Future<void> saveCoach(CoachModel coach) async {
     _store.addCoach(coach);
+  }
+
+  // Update coach
+  Future<void> updateCoach(CoachModel coach) async {
+    _store.updateCoach(coach);
+  }
+
+  // Delete coach
+  Future<void> deleteCoach(String coachId) async {
+    _store.deleteCoach(coachId);
   }
 
   // Stream payroll for a specific month
