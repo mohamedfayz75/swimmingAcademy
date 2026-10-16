@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'core/rbac/app_role.dart';
 import 'core/theme/app_theme.dart';
+import 'core/utils/dialogs.dart';
+import 'data/local/local_store.dart';
 import 'features/attendance/presentation/qr_attendance_scanner_screen.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/coaches_payroll/presentation/coach_payroll_screen.dart';
@@ -295,6 +298,43 @@ class _AppShellState extends ConsumerState<AppShell> {
               ),
             ],
 
+            const Divider(thickness: 1.5),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              color: AppTheme.primaryBlue.withOpacity(0.08),
+              child: Row(
+                children: [
+                  const Icon(Icons.security_update_good, size: 16, color: AppTheme.primaryBlue),
+                  const SizedBox(width: 6),
+                  Text(
+                    'أمان وحفظ البيانات والنسخ الاحتياطي',
+                    style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+                  ),
+                ],
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.backup_rounded, color: AppTheme.primaryBlue),
+              title: Text('النسخ الاحتياطي واسترجاع البيانات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              subtitle: Text('نسخ كود البيانات بالكامل أو استرجاعه في أي وقت', style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted)),
+              onTap: () {
+                Navigator.pop(context);
+                _showBackupRestoreDialog(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.save_rounded, color: AppTheme.successGreen),
+              title: Text('تثبيت وحفظ جميع البيانات الآن 💾', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: AppTheme.successGreen)),
+              subtitle: Text('حفظ فوري وشامل للاعبين والاشتراكات والمجموعات', style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted)),
+              onTap: () async {
+                Navigator.pop(context);
+                await LocalStore.instance.saveAllExplicitly();
+                if (mounted) {
+                  AppDialogs.showSuccessSnackBar(context, '💾 تم حفظ وتثبيت جميع اللاعبين والاشتراكات والمجموعات بنجاح في الذاكرة الدائمة!');
+                }
+              },
+            ),
+
             const Divider(),
 
             ListTile(
@@ -358,6 +398,174 @@ class _AppShellState extends ConsumerState<AppShell> {
           ],
         ],
       ),
+    );
+  }
+
+  void _showBackupRestoreDialog(BuildContext context) {
+    int activeTab = 0; // 0 = تصدير (نسخ الكود), 1 = استرجاع (لصق الكود)
+    final restoreController = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          final backupJson = LocalStore.instance.exportBackupJson();
+          final playersCount = LocalStore.instance.getPlayers().length;
+          final subsCount = LocalStore.instance.getSubscriptions().length;
+          final groupsCount = LocalStore.instance.getGroups().length;
+          final cardsCount = LocalStore.instance.getWaterCards().length;
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: [
+                const Icon(Icons.cloud_sync, color: AppTheme.primaryBlue),
+                const SizedBox(width: 8),
+                Text('النسخ الاحتياطي واسترجاع البيانات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+            content: SizedBox(
+              width: 480,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // تبويب الاختيار
+                    SegmentedButton<int>(
+                      segments: const [
+                        ButtonSegment<int>(
+                          value: 0,
+                          label: Text('تصدير نسخة (نسخ)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          icon: Icon(Icons.file_download, size: 16),
+                        ),
+                        ButtonSegment<int>(
+                          value: 1,
+                          label: Text('استرجاع نسخة (لصق)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          icon: Icon(Icons.file_upload, size: 16),
+                        ),
+                      ],
+                      selected: {activeTab},
+                      onSelectionChanged: (set) => setModalState(() => activeTab = set.first),
+                    ),
+                    const SizedBox(height: 16),
+
+                    if (activeTab == 0) ...[
+                      // ملخص البيانات الحالية
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: AppTheme.backgroundLight,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.blueGrey.shade100),
+                        ),
+                        child: Column(
+                          children: [
+                            Text('البيانات الحالية الجاهزة للتصدير:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12)),
+                            const SizedBox(height: 8),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                _buildBackupItemChip('اللاعبين', '$playersCount', AppTheme.primaryBlue),
+                                _buildBackupItemChip('الاشتراكات', '$subsCount', AppTheme.successGreen),
+                                _buildBackupItemChip('المجموعات', '$groupsCount', AppTheme.warningOrange),
+                                _buildBackupItemChip('كروت المياة', '$cardsCount', AppTheme.accentTeal),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Text(
+                        '💡 اضغط على الزر أدناه لنسخ كود البيانات بالكامل إلى الحافظة. يمكنك حفظه في ملف نصي أو إرساله في رسالة لنفسك على الواتساب للاحتفاظ بنسخة احتياطية آمنة.',
+                        style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted),
+                      ),
+                      const SizedBox(height: 16),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.primaryBlue,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.copy, size: 18),
+                        label: Text('📋 نسخ كود النسخة الاحتياطية بالكامل', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                        onPressed: () {
+                          Clipboard.setData(ClipboardData(text: backupJson));
+                          AppDialogs.showSuccessSnackBar(
+                            context,
+                            'تم نسخ كود النسخة الاحتياطية بنجاح إلى الحافظة! ($playersCount لاعب - $subsCount اشتراك)',
+                          );
+                        },
+                      ),
+                    ] else ...[
+                      Text(
+                        'الصق كود النسخة الاحتياطية (JSON) المستخرج مسبقاً لاسترجاع جميع اللاعبين والاشتراكات فوراً:',
+                        style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: restoreController,
+                        maxLines: 6,
+                        style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                        decoration: InputDecoration(
+                          hintText: 'الصق كود البيانات هنا...',
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.warningOrange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        icon: const Icon(Icons.restore, size: 18),
+                        label: Text('تأكيد استرجاع البيانات الآن', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                        onPressed: () async {
+                          final text = restoreController.text.trim();
+                          if (text.isEmpty) {
+                            AppDialogs.showErrorSnackBar(context, 'يرجى لصق كود النسخة الاحتياطية أولاً');
+                            return;
+                          }
+
+                          final ok = LocalStore.instance.importBackupJson(text);
+                          if (ok) {
+                            await LocalStore.instance.saveAllExplicitly();
+                            if (context.mounted) {
+                              Navigator.pop(ctx);
+                              AppDialogs.showSuccessSnackBar(context, '🎉 تم استرجاع جميع البيانات وتثبيتها بنجاح!');
+                              setState(() {});
+                            }
+                          } else {
+                            AppDialogs.showErrorSnackBar(context, 'فشل الاسترجاع: الكود الذي قمت بلصقه غير صالح أو غير مكتمل');
+                          }
+                        },
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('إغلاق', style: GoogleFonts.cairo(color: AppTheme.textMuted)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildBackupItemChip(String label, String count, Color color) {
+    return Column(
+      children: [
+        Text(count, style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+        Text(label, style: GoogleFonts.cairo(fontSize: 10, color: AppTheme.textMuted)),
+      ],
     );
   }
 }
