@@ -31,14 +31,15 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
   GroupModel? _selectedSecondaryGroup; // For split days (e.g. Saturday in group A + Sunday in group B)
   bool _isSplitSchedule = false;
 
-  final _stampFeeController = TextEditingController(text: '50.0');
-  final _amountRequiredController = TextEditingController(text: '800.0');
-  final _amountPaidController = TextEditingController(text: '850.0');
+  // الخانات تبدأ فارغة تماماً ليقوم الإداري بإدخالها بناءً على طلب المستخدم
+  final _stampFeeController = TextEditingController();
+  final _amountRequiredController = TextEditingController();
+  final _amountPaidController = TextEditingController();
+  final _sessionsCountController = TextEditingController();
 
-  String _subscriptionType = 'شهري (8 حصص)';
+  String? _subscriptionType;
   String _paymentMethod = AppConstants.paymentCash;
   String _bookingStatus = AppConstants.statusActive;
-  int _sessionsCount = 8;
   DateTime _startDate = DateTime.now(); // تاريخ نزول المياة
   DateTime _paymentDate = DateTime.now(); // تاريخ الدفع
 
@@ -55,23 +56,39 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
     _stampFeeController.dispose();
     _amountRequiredController.dispose();
     _amountPaidController.dispose();
+    _sessionsCountController.dispose();
     super.dispose();
   }
 
   // Exact agreed formula: (المقرر + ختم الكارت) - المدفوع
   double get _totalDue {
-    final req = double.tryParse(_amountRequiredController.text) ?? 0.0;
-    final stamp = double.tryParse(_stampFeeController.text) ?? 0.0;
+    final req = double.tryParse(_amountRequiredController.text.trim()) ?? 0.0;
+    final stamp = double.tryParse(_stampFeeController.text.trim()) ?? 0.0;
     return req + stamp;
   }
 
   double get _amountRemaining {
-    final paid = double.tryParse(_amountPaidController.text) ?? 0.0;
+    final paid = double.tryParse(_amountPaidController.text.trim()) ?? 0.0;
     final rem = _totalDue - paid;
     return rem > 0 ? rem : 0.0;
   }
 
-  String get _paymentStatus => _amountRemaining <= 0 ? 'خالص (مدفوع بالكامل)' : 'متبقي عليه: $_amountRemaining ج.م';
+  String get _paymentStatus {
+    final req = double.tryParse(_amountRequiredController.text.trim()) ?? 0.0;
+    final stamp = double.tryParse(_stampFeeController.text.trim()) ?? 0.0;
+    final paid = double.tryParse(_amountPaidController.text.trim()) ?? 0.0;
+
+    if (req == 0.0 && stamp == 0.0 && paid == 0.0) {
+      return 'بانتظار إدخال المبالغ';
+    }
+    if (_totalDue > 0 && paid >= _totalDue) {
+      return 'خالص (مدفوع بالكامل)';
+    }
+    if (paid > 0 && paid < _totalDue) {
+      return 'مدفوع جزئي (متبقي: ${AppFormatters.formatCurrency(_amountRemaining)})';
+    }
+    return 'غير مسدد (متبقي: ${AppFormatters.formatCurrency(_amountRemaining)})';
+  }
 
   Future<void> _pickDate({required bool isStart}) async {
     final initial = isStart ? _startDate : _paymentDate;
@@ -91,6 +108,203 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
         }
       });
     }
+  }
+
+  // --- نافذة البحث عن السباح بالاسم أو الكود (بدلاً من القائمة المنسدلة) ---
+  void _openPlayerSearchSheet(List<PlayerModel> players) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        String searchQuery = '';
+        return StatefulBuilder(
+          builder: (context, setSheetState) {
+            final filtered = players.where((p) {
+              if (searchQuery.trim().isEmpty) return true;
+              final q = searchQuery.trim().toLowerCase();
+              return p.playerName.toLowerCase().contains(q) ||
+                  p.playerCode.toLowerCase().contains(q) ||
+                  p.guardianPhone.contains(q);
+            }).toList();
+
+            return Padding(
+              padding: EdgeInsets.only(
+                top: 16,
+                left: 16,
+                right: 16,
+                bottom: MediaQuery.of(context).viewInsets.bottom + 16,
+              ),
+              child: SizedBox(
+                height: MediaQuery.of(context).size.height * 0.75,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Handle Bar
+                    Center(
+                      child: Container(
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade300,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Header
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.person_search, color: AppTheme.primaryBlue, size: 24),
+                            const SizedBox(width: 8),
+                            Text(
+                              'اختيار السباح بالاسم أو الكود',
+                              style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Search TextField
+                    TextField(
+                      autofocus: true,
+                      style: GoogleFonts.cairo(fontSize: 14),
+                      decoration: InputDecoration(
+                        hintText: 'ابحث باسم السباح أو الكود أو رقم الهاتف...',
+                        prefixIcon: const Icon(Icons.search, color: AppTheme.primaryBlue),
+                        suffixIcon: searchQuery.isNotEmpty
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  setSheetState(() => searchQuery = '');
+                                },
+                              )
+                            : null,
+                      ),
+                      onChanged: (val) {
+                        setSheetState(() => searchQuery = val);
+                      },
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Results count
+                    Text(
+                      'النتائج المتاحة: ${filtered.length} لاعب',
+                      style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 6),
+
+                    // Players List
+                    Expanded(
+                      child: filtered.isEmpty
+                          ? Center(
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.person_off, size: 48, color: Colors.grey.shade400),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    'لم يتم العثور على أي سباح يطابق البحث',
+                                    style: GoogleFonts.cairo(color: AppTheme.textMuted),
+                                  ),
+                                ],
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: filtered.length,
+                              separatorBuilder: (_, __) => const Divider(height: 1),
+                              itemBuilder: (context, idx) {
+                                final p = filtered[idx];
+                                final isSelected = _selectedPlayer?.playerCode == p.playerCode;
+
+                                return ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  leading: CircleAvatar(
+                                    backgroundColor: isSelected
+                                        ? AppTheme.accentTeal
+                                        : AppTheme.primaryBlue.withOpacity(0.12),
+                                    foregroundColor: isSelected ? Colors.white : AppTheme.primaryBlue,
+                                    child: Text(
+                                      p.playerName.isNotEmpty ? p.playerName.substring(0, 1) : 'س',
+                                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
+                                  title: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          p.playerName,
+                                          style: GoogleFonts.cairo(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14,
+                                            color: isSelected ? AppTheme.primaryBlue : AppTheme.textDark,
+                                          ),
+                                        ),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: AppTheme.primaryBlue.withOpacity(0.08),
+                                          borderRadius: BorderRadius.circular(6),
+                                          border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.2)),
+                                        ),
+                                        child: Text(
+                                          p.playerCode,
+                                          style: GoogleFonts.cairo(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.primaryBlue,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  subtitle: Row(
+                                    children: [
+                                      Text(
+                                        'هاتف: ${p.guardianPhone.isNotEmpty ? p.guardianPhone : "غير مسجل"}',
+                                        style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text('•', style: TextStyle(color: Colors.grey.shade400)),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        p.customerType,
+                                        style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted),
+                                      ),
+                                    ],
+                                  ),
+                                  trailing: isSelected
+                                      ? const Icon(Icons.check_circle, color: AppTheme.accentTeal)
+                                      : const Icon(Icons.chevron_left, color: Colors.grey),
+                                  onTap: () {
+                                    setState(() => _selectedPlayer = p);
+                                    Navigator.pop(ctx);
+                                  },
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showWhatsAppConfirmationSheet(SubscriptionModel sub) {
@@ -160,11 +374,27 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
     if (!_formKey.currentState!.validate()) return;
 
     if (_selectedPlayer == null) {
-      AppDialogs.showErrorSnackBar(context, 'يرجى اختيار اللاعب أولاً');
+      AppDialogs.showErrorSnackBar(context, 'يرجى اختيار اللاعب بالبحث أولاً');
       return;
     }
     if (_selectedGroup == null) {
       AppDialogs.showErrorSnackBar(context, 'يرجى اختيار المجموعة أولاً');
+      return;
+    }
+    if (_subscriptionType == null || _subscriptionType!.isEmpty) {
+      AppDialogs.showErrorSnackBar(context, 'يرجى اختيار نوع الاشتراك');
+      return;
+    }
+
+    final sessions = int.tryParse(_sessionsCountController.text.trim()) ?? 0;
+    if (sessions <= 0) {
+      AppDialogs.showErrorSnackBar(context, 'يرجى إدخال عدد الحصص بالأرقام');
+      return;
+    }
+
+    final amountRequired = double.tryParse(_amountRequiredController.text.trim()) ?? 0.0;
+    if (amountRequired <= 0) {
+      AppDialogs.showErrorSnackBar(context, 'يرجى إدخال المبلغ المقرر');
       return;
     }
 
@@ -185,13 +415,13 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
           : _selectedGroup!.trainingDays,
       sessionTime: _selectedGroup!.sessionTime,
       trainingType: _selectedGroup!.trainingType,
-      stampCardFee: double.tryParse(_stampFeeController.text) ?? 0.0,
-      amountRequired: double.tryParse(_amountRequiredController.text) ?? 0.0,
-      amountPaid: double.tryParse(_amountPaidController.text) ?? 0.0,
+      stampCardFee: double.tryParse(_stampFeeController.text.trim()) ?? 0.0,
+      amountRequired: amountRequired,
+      amountPaid: double.tryParse(_amountPaidController.text.trim()) ?? 0.0,
       paymentMethod: _paymentMethod,
       paymentDate: Timestamp.fromDate(_paymentDate),
-      subscriptionType: _subscriptionType,
-      sessionsCount: _sessionsCount,
+      subscriptionType: _subscriptionType!,
+      sessionsCount: sessions,
       attendedSessions: 0,
       excusedSessions: 0,
       startDate: Timestamp.fromDate(_startDate),
@@ -216,6 +446,12 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
       setState(() {
         _selectedGroup = null;
         _selectedSecondaryGroup = null;
+        _selectedPlayer = null;
+        _subscriptionType = null;
+        _sessionsCountController.clear();
+        _amountRequiredController.clear();
+        _stampFeeController.clear();
+        _amountPaidController.clear();
       });
     } catch (e) {
       if (!mounted) return;
@@ -298,7 +534,9 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
 
               const SizedBox(height: 20),
 
-              // 1. Player Selection
+              // ==============================================================
+              // 1. Player Selection (Search by Name or Code - طلب المستخدم)
+              // ==============================================================
               Text(
                 '1. بيانات السباح *',
                 style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.primaryBlue),
@@ -306,27 +544,97 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
               const SizedBox(height: 8),
               playersAsync.when(
                 data: (players) {
-                  return DropdownButtonFormField<PlayerModel>(
-                    value: _selectedPlayer,
-                    decoration: const InputDecoration(
-                      hintText: 'اختر اللاعب من الدليل...',
-                      prefixIcon: Icon(Icons.person_search, color: AppTheme.primaryBlue),
-                    ),
-                    items: players.map((p) {
-                      return DropdownMenuItem<PlayerModel>(
-                        value: p,
-                        child: Text(
-                          '${p.playerCode} - ${p.playerName} (${p.customerType})',
-                          style: GoogleFonts.cairo(fontSize: 14),
-                          overflow: TextOverflow.ellipsis,
+                  if (_selectedPlayer == null) {
+                    return InkWell(
+                      onTap: () => _openPlayerSearchSheet(players),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: Colors.blueGrey.shade300, width: 1.2),
                         ),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      setState(() => _selectedPlayer = val);
-                    },
-                    validator: (val) => val == null ? 'يرجى اختيار اللاعب' : null,
-                  );
+                        child: Row(
+                          children: [
+                            const Icon(Icons.person_search, color: AppTheme.primaryBlue, size: 22),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'اضغط للبحث عن السباح بالاسم أو الكود...',
+                                style: GoogleFonts.cairo(color: AppTheme.textMuted, fontSize: 13),
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppTheme.primaryBlue.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.search, size: 16, color: AppTheme.primaryBlue),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'بحث',
+                                    style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  } else {
+                    return Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryBlue.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.4), width: 1.2),
+                      ),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            backgroundColor: AppTheme.primaryBlue,
+                            foregroundColor: Colors.white,
+                            child: const Icon(Icons.person, size: 22),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _selectedPlayer!.playerName,
+                                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.primaryBlue),
+                                ),
+                                Text(
+                                  'كود: ${_selectedPlayer!.playerCode} | فئة: ${_selectedPlayer!.customerType} | هاتف: ${_selectedPlayer!.guardianPhone.isNotEmpty ? _selectedPlayer!.guardianPhone : "غير مسجل"}',
+                                  style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textDark),
+                                ),
+                              ],
+                            ),
+                          ),
+                          OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.primaryBlue,
+                              side: const BorderSide(color: AppTheme.primaryBlue),
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              minimumSize: Size.zero,
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                            onPressed: () => _openPlayerSearchSheet(players),
+                            icon: const Icon(Icons.swap_horiz, size: 16),
+                            label: Text('تغيير', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 11)),
+                          ),
+                        ],
+                      ),
+                    );
+                  }
                 },
                 loading: () => const LinearProgressIndicator(),
                 error: (_, __) => const Text('خطأ في تحميل اللاعبين'),
@@ -334,7 +642,9 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
 
               const SizedBox(height: 20),
 
+              // ==============================================================
               // 2. Group Selection
+              // ==============================================================
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -415,7 +725,7 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
                 ),
               ],
 
-              // Auto-populated and Locked Details
+              // Auto-populated Details
               if (_selectedGroup != null) ...[
                 const SizedBox(height: 12),
                 Container(
@@ -438,9 +748,11 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
 
               const SizedBox(height: 24),
 
-              // 3. Package & Financials
+              // ==============================================================
+              // 3. Subscription Details (تم تعديل الاسم إلى تفاصيل الاشتراك وتفريغ الخانات)
+              // ==============================================================
               Text(
-                '3. تفاصيل الباقة والماليات وطريقة الدفع *',
+                '3. تفاصيل الاشتراك *',
                 style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 15, color: AppTheme.primaryBlue),
               ),
               const SizedBox(height: 10),
@@ -451,7 +763,8 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
                     flex: 2,
                     child: DropdownButtonFormField<String>(
                       value: _subscriptionType,
-                      decoration: const InputDecoration(labelText: 'نوع الاشتراك'),
+                      hint: Text('اختر نوع الاشتراك...', style: GoogleFonts.cairo(fontSize: 13, color: AppTheme.textMuted)),
+                      decoration: const InputDecoration(labelText: 'نوع الاشتراك *'),
                       items: AppConstants.subscriptionTypes.map((type) {
                         return DropdownMenuItem(value: type, child: Text(type, style: GoogleFonts.cairo(fontSize: 13)));
                       }).toList(),
@@ -459,25 +772,34 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
                         if (val != null) {
                           setState(() {
                             _subscriptionType = val;
-                            if (val.contains('4 حصص')) _sessionsCount = 4;
-                            else if (val.contains('8 حصص')) _sessionsCount = 8;
-                            else if (val.contains('12 حصة')) _sessionsCount = 12;
-                            else if (val.contains('24 حصة')) _sessionsCount = 24;
+                            // اقتراح عدد الحصص تلقائياً إذا كانت الخانة فارغة
+                            if (_sessionsCountController.text.trim().isEmpty) {
+                              if (val.contains('4 حصص')) _sessionsCountController.text = '4';
+                              else if (val.contains('8 حصص')) _sessionsCountController.text = '8';
+                              else if (val.contains('12 حصة')) _sessionsCountController.text = '12';
+                              else if (val.contains('24 حصة')) _sessionsCountController.text = '24';
+                            }
                           });
                         }
                       },
+                      validator: (val) => val == null || val.isEmpty ? 'يرجى اختيار نوع الاشتراك' : null,
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     flex: 1,
                     child: TextFormField(
-                      initialValue: '$_sessionsCount',
+                      controller: _sessionsCountController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'عدد الحصص'),
-                      onChanged: (val) {
-                        final parsed = int.tryParse(val);
-                        if (parsed != null) _sessionsCount = parsed;
+                      decoration: const InputDecoration(
+                        labelText: 'عدد الحصص *',
+                        hintText: 'مثال: 8',
+                      ),
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'مطلوب';
+                        final n = int.tryParse(val.trim());
+                        if (n == null || n <= 0) return 'أدخل رقم';
+                        return null;
                       },
                     ),
                   ),
@@ -486,16 +808,24 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
 
               const SizedBox(height: 14),
 
-              // Amount Required, Stamp Fee, and Paid
+              // Amount Required, Stamp Fee, and Paid (خانات تبدأ فارغة بناءً على طلب المستخدم)
               Row(
                 children: [
                   Expanded(
                     child: TextFormField(
                       controller: _amountRequiredController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'المبلغ المقرر (ج.م) *'),
+                      decoration: const InputDecoration(
+                        labelText: 'المبلغ المقرر (ج.م) *',
+                        hintText: 'مثال: 800',
+                      ),
                       onChanged: (_) => setState(() {}),
-                      validator: (val) => val == null || val.isEmpty ? 'مطلوب' : null,
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'مطلوب';
+                        final n = double.tryParse(val.trim());
+                        if (n == null || n < 0) return 'أدخل مبلغ صحيح';
+                        return null;
+                      },
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -503,7 +833,10 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
                     child: TextFormField(
                       controller: _stampFeeController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'سعر ختم الكارت (ج.م) *'),
+                      decoration: const InputDecoration(
+                        labelText: 'سعر ختم الكارت (ج.م)',
+                        hintText: '0.0',
+                      ),
                       onChanged: (_) => setState(() {}),
                     ),
                   ),
@@ -512,9 +845,17 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
                     child: TextFormField(
                       controller: _amountPaidController,
                       keyboardType: TextInputType.number,
-                      decoration: const InputDecoration(labelText: 'المبلغ المدفوع (ج.م) *'),
+                      decoration: const InputDecoration(
+                        labelText: 'المبلغ المدفوع (ج.م) *',
+                        hintText: 'مثال: 850',
+                      ),
                       onChanged: (_) => setState(() {}),
-                      validator: (val) => val == null || val.isEmpty ? 'مطلوب' : null,
+                      validator: (val) {
+                        if (val == null || val.trim().isEmpty) return 'مطلوب';
+                        final n = double.tryParse(val.trim());
+                        if (n == null || n < 0) return 'أدخل مبلغ صحيح';
+                        return null;
+                      },
                     ),
                   ),
                 ],
@@ -559,7 +900,10 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
                       borderRadius: BorderRadius.circular(12),
                       child: InputDecorator(
                         decoration: const InputDecoration(labelText: 'تاريخ بداية النزول (المياة)'),
-                        child: Text(AppFormatters.formatDate(_startDate), style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
+                        child: Text(
+                          AppFormatters.formatDate(_startDate),
+                          style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+                        ),
                       ),
                     ),
                   ),
@@ -572,12 +916,16 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: _amountRemaining <= 0
-                      ? AppTheme.successGreen.withOpacity(0.08)
-                      : AppTheme.warningOrange.withOpacity(0.08),
+                  color: _totalDue == 0.0 && (double.tryParse(_amountPaidController.text.trim()) ?? 0.0) == 0.0
+                      ? AppTheme.primaryBlue.withOpacity(0.05)
+                      : (_amountRemaining <= 0
+                          ? AppTheme.successGreen.withOpacity(0.08)
+                          : AppTheme.warningOrange.withOpacity(0.08)),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: _amountRemaining <= 0 ? AppTheme.successGreen : AppTheme.warningOrange,
+                    color: _totalDue == 0.0 && (double.tryParse(_amountPaidController.text.trim()) ?? 0.0) == 0.0
+                        ? Colors.blueGrey.shade200
+                        : (_amountRemaining <= 0 ? AppTheme.successGreen : AppTheme.warningOrange),
                   ),
                 ),
                 child: Column(
@@ -600,9 +948,11 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
                             Text(
                               _paymentStatus,
                               style: GoogleFonts.cairo(
-                                fontSize: 16,
+                                fontSize: 15,
                                 fontWeight: FontWeight.bold,
-                                color: _amountRemaining <= 0 ? AppTheme.successGreen : AppTheme.warningOrange,
+                                color: _totalDue == 0.0
+                                    ? AppTheme.textMuted
+                                    : (_amountRemaining <= 0 ? AppTheme.successGreen : AppTheme.warningOrange),
                               ),
                             ),
                           ],
