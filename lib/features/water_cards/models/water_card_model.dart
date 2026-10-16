@@ -10,6 +10,7 @@ class WaterCardModel {
   final int totalSessions;
   final int usedSessions;
   final String monthlyClosingRef;
+  final bool isArchived;
 
   const WaterCardModel({
     required this.id,
@@ -20,14 +21,15 @@ class WaterCardModel {
     required this.totalSessions,
     this.usedSessions = 0,
     required this.monthlyClosingRef,
+    this.isArchived = false,
   });
 
   // Calculated fields
   int get remainingSessions => (totalSessions - usedSessions) > 0 ? (totalSessions - usedSessions) : 0;
-  String get status => remainingSessions > 0 ? 'نشط' : 'منتهي';
-  bool get isActive => remainingSessions > 0;
-  bool get isLow => remainingSessions > 0 && remainingSessions <= 5;
-  bool get isDepleted => remainingSessions <= 0;
+  String get status => isArchived ? 'مؤرشف ومكتمل' : (remainingSessions > 0 ? 'نشط' : 'منتهي');
+  bool get isActive => !isArchived && remainingSessions > 0;
+  bool get isLow => !isArchived && remainingSessions > 0 && remainingSessions <= 5;
+  bool get isDepleted => isArchived || remainingSessions <= 0;
 
   factory WaterCardModel.fromMap(Map<String, dynamic> map) {
     return WaterCardModel(
@@ -43,6 +45,7 @@ class WaterCardModel {
       totalSessions: (map['total_sessions'] as num?)?.toInt() ?? 40,
       usedSessions: (map['used_sessions'] as num?)?.toInt() ?? 0,
       monthlyClosingRef: map['monthly_closing_ref'] as String? ?? '',
+      isArchived: map['is_archived'] as bool? ?? false,
     );
   }
 
@@ -56,6 +59,7 @@ class WaterCardModel {
       'total_sessions': totalSessions,
       'used_sessions': usedSessions,
       'monthly_closing_ref': monthlyClosingRef,
+      'is_archived': isArchived,
     };
   }
 
@@ -70,6 +74,7 @@ class WaterCardModel {
       totalSessions: (data['total_sessions'] as num?)?.toInt() ?? 40,
       usedSessions: (data['used_sessions'] as num?)?.toInt() ?? 0,
       monthlyClosingRef: data['monthly_closing_ref'] as String? ?? '',
+      isArchived: data['is_archived'] as bool? ?? false,
     );
   }
 
@@ -84,6 +89,7 @@ class WaterCardModel {
       'remaining_sessions': remainingSessions,
       'status': status,
       'monthly_closing_ref': monthlyClosingRef,
+      'is_archived': isArchived,
     };
   }
 
@@ -96,6 +102,7 @@ class WaterCardModel {
     int? totalSessions,
     int? usedSessions,
     String? monthlyClosingRef,
+    bool? isArchived,
   }) {
     return WaterCardModel(
       id: id ?? this.id,
@@ -106,6 +113,7 @@ class WaterCardModel {
       totalSessions: totalSessions ?? this.totalSessions,
       usedSessions: usedSessions ?? this.usedSessions,
       monthlyClosingRef: monthlyClosingRef ?? this.monthlyClosingRef,
+      isArchived: isArchived ?? this.isArchived,
     );
   }
 }
