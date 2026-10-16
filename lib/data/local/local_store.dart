@@ -1143,6 +1143,12 @@ class LocalStore {
     }
   }
 
+  void deleteCoach(String coachId) {
+    _coaches.removeWhere((c) => c.coachId == coachId);
+    _coachesController.add(List.unmodifiable(_coaches));
+    _saveAll();
+  }
+
   void logDailyCoachSession(String coachId, int sessionsCount, String monthYear) {
     final index = _payrolls.indexWhere((p) => p.coachId == coachId && p.monthYear == monthYear);
     if (index != -1) {
