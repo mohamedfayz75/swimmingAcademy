@@ -49,7 +49,7 @@ class _PlayersListScreenState extends ConsumerState<PlayersListScreen> {
               foregroundColor: Colors.white,
             ),
             onPressed: () {
-              LocalStore.instance.deletePlayer(player.id);
+              LocalStore.instance.deletePlayer(player.playerCode);
               Navigator.pop(ctx);
               AppDialogs.showSuccessSnackBar(context, 'تم حذف اللاعب ${player.playerName} بنجاح');
             },
