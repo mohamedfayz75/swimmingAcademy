@@ -9,6 +9,8 @@ import '../../../data/local/local_store.dart';
 import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_provider.dart';
 import '../../players/models/player_model.dart';
+import '../../../core/rbac/app_role.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/subscription_model.dart';
 import '../providers/subscription_provider.dart';
 import 'subscription_entry_screen.dart';
@@ -22,6 +24,43 @@ class SubscriptionsListScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScreen> {
   String? _filter; // null = all, 'paid', 'remaining', 'deposit'
+
+  void _confirmDeleteSubscription(SubscriptionModel sub) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed),
+            const SizedBox(width: 8),
+            Text('تأكيد حذف الاشتراك', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'هل أنت متأكد من حذف اشتراك السباح «${sub.playerName}» (كود: ${sub.playerCode}) في مجموعة «${sub.groupCode}» نهائياً؟\nسيتم استرجاع مقعد المجموعة تلقائياً.',
+          style: GoogleFonts.cairo(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.errorRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              LocalStore.instance.deleteSubscription(sub.id);
+              Navigator.pop(ctx);
+              AppDialogs.showSuccessSnackBar(context, 'تم حذف اشتراك السباح ${sub.playerName} بنجاح');
+            },
+            child: const Text('حذف نهائي'),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _showTransferGroupDialog(SubscriptionModel sub) {
     final allGroups = LocalStore.instance.getGroups();
@@ -176,6 +215,7 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
   @override
   Widget build(BuildContext context) {
     final subscriptionsAsync = ref.watch(subscriptionsStreamProvider);
+    final isOwner = ref.watch(currentUserProvider).value?.role.isOwner ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -326,24 +366,40 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                                   ],
                                 ),
 
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: isExpired
-                                        ? AppTheme.errorRed.withOpacity(0.12)
-                                        : (isPaid ? AppTheme.successGreen.withOpacity(0.12) : AppTheme.warningOrange.withOpacity(0.12)),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    isExpired ? 'منتهي (مطلوب تجديد)' : sub.paymentStatus,
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                      color: isExpired
-                                          ? AppTheme.errorRed
-                                          : (isPaid ? AppTheme.successGreen : AppTheme.warningOrange),
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                      decoration: BoxDecoration(
+                                        color: isExpired
+                                            ? AppTheme.errorRed.withOpacity(0.12)
+                                            : (isPaid ? AppTheme.successGreen.withOpacity(0.12) : AppTheme.warningOrange.withOpacity(0.12)),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: Text(
+                                        isExpired ? 'منتهي (مطلوب تجديد)' : sub.paymentStatus,
+                                        style: GoogleFonts.cairo(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.bold,
+                                          color: isExpired
+                                              ? AppTheme.errorRed
+                                              : (isPaid ? AppTheme.successGreen : AppTheme.warningOrange),
+                                        ),
+                                      ),
                                     ),
-                                  ),
+                                    if (isOwner) ...[
+                                      const SizedBox(width: 4),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed, size: 20),
+                                        tooltip: 'حذف الاشتراك (للمالك فقط)',
+                                        visualDensity: VisualDensity.compact,
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        onPressed: () => _confirmDeleteSubscription(sub),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ],
                             ),
