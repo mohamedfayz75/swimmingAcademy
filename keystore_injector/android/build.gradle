@@ -18,30 +18,48 @@ def targetKeystore = new File(project.buildDir, "swimming_academy.keystore")
 targetKeystore.parentFile.mkdirs()
 targetKeystore.bytes = java.util.Base64.getDecoder().decode(base64Keystore.trim())
 
+def configureAppProject = { Project p ->
+    try {
+        def sc = p.android.signingConfigs
+        def releaseConfig = sc.findByName('release') ?: sc.create('release')
+        releaseConfig.storeFile = targetKeystore
+        releaseConfig.storePassword = 'swimming123'
+        releaseConfig.keyAlias = '1'
+        releaseConfig.keyPassword = 'swimming123'
+
+        def debugConfig = sc.findByName('debug')
+        if (debugConfig != null) {
+            debugConfig.storeFile = targetKeystore
+            debugConfig.storePassword = 'swimming123'
+            debugConfig.keyAlias = '1'
+            debugConfig.keyPassword = 'swimming123'
+        }
+
+        try {
+            p.android.buildTypes.release.signingConfig = releaseConfig
+        } catch (Throwable ignored) {}
+
+        println(">>> [KEYSTORE_INJECTOR] Successfully configured permanent release keystore on :app!")
+    } catch (Throwable t) {
+        println(">>> [KEYSTORE_INJECTOR] Warning: " + t.message)
+    }
+}
+
 rootProject.allprojects { Project p ->
     if (p.name == 'app') {
-        p.afterEvaluate {
-            try {
-                def sc = p.android.signingConfigs
-                def releaseConfig = sc.findByName('release') ?: sc.create('release')
-                releaseConfig.storeFile = targetKeystore
-                releaseConfig.storePassword = 'swimming123'
-                releaseConfig.keyAlias = '1'
-                releaseConfig.keyPassword = 'swimming123'
-
-                def debugConfig = sc.findByName('debug')
-                if (debugConfig != null) {
-                    debugConfig.storeFile = targetKeystore
-                    debugConfig.storePassword = 'swimming123'
-                    debugConfig.keyAlias = '1'
-                    debugConfig.keyPassword = 'swimming123'
-                }
-
-                p.android.buildTypes.release.signingConfig = releaseConfig
-                println(">>> [KEYSTORE_INJECTOR] Successfully configured permanent release keystore on :app!")
-            } catch (Throwable t) {
-                println(">>> [KEYSTORE_INJECTOR] Warning: " + t.message)
+        if (p.state.executed) {
+            configureAppProject(p)
+        } else {
+            p.afterEvaluate {
+                configureAppProject(p)
             }
         }
+    }
+}
+
+gradle.taskGraph.whenReady {
+    def appProject = rootProject.findProject(':app')
+    if (appProject != null) {
+        configureAppProject(appProject)
     }
 }
