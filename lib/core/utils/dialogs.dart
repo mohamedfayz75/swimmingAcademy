@@ -50,6 +50,28 @@ class AppDialogs {
     );
   }
 
+  static void showWarningSnackBar(BuildContext context, String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                message,
+                style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: AppTheme.warningOrange,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
   // Dialog showing Player ID Card & QR Code
   static void showPlayerCardDialog(BuildContext context, PlayerModel player) {
     showDialog(
