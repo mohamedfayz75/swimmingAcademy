@@ -22,6 +22,8 @@ class PlayerModel {
     required this.createdAt,
   });
 
+  String get id => playerCode;
+
   factory PlayerModel.fromMap(Map<String, dynamic> map) {
     return PlayerModel(
       playerCode: map['player_code'] as String? ?? '',
