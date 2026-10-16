@@ -46,12 +46,12 @@ class _AppShellState extends ConsumerState<AppShell> {
       const PoolSlotMatrixScreen(),            // 4: Pool Matrix Schedule
       const PlayersListScreen(),               // 5: Players Directory
       const SubscriptionsListScreen(),         // 6: Subscriptions History
+      const GroupAttendeesScreen(),            // 7: Group Attendees & Swimming Roll Call
     ];
 
     // Owner Dedicated Screens
     final List<Widget> ownerScreens = [
-      const OwnerDashboardScreen(),            // 7: Financial Dashboard & Closures
-      const GroupAttendeesScreen(),            // 8: Group Attendees Breakdown
+      const OwnerDashboardScreen(),            // 8: Financial Dashboard & Closures
       const CoachPayrollScreen(),              // 9: Coach Payroll & Advances
       const CoachesListScreen(),               // 10: Coaches Directory
       const GroupsManagementScreen(),          // 11: Groups Management
@@ -78,9 +78,9 @@ class _AppShellState extends ConsumerState<AppShell> {
       'جدول المواعيد وسعة الحارات',
       'دليل وبيانات اللاعبين',
       'سجل الاشتراكات والتحصيل',
+      'كشف نزول المجموعة والتمام للمسبح',
       if (isOwner) ...[
         'اللوحة المالية والتقفيل الشهري',
-        'كشف نزول المجموعة والمشتركين',
         'رواتب ومسيرات الكباتن',
         'دليل الكباتن والمدربين',
         'إدارة وإنشاء المجموعات',
@@ -224,6 +224,15 @@ class _AppShellState extends ConsumerState<AppShell> {
                 Navigator.pop(context);
               },
             ),
+            ListTile(
+              leading: const Icon(Icons.pool, color: AppTheme.primaryBlue),
+              title: Text('كشف نزول المجموعة والتمام للمسبح', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              selected: _currentIndex == 7,
+              onTap: () {
+                setState(() => _currentIndex = 7);
+                Navigator.pop(context);
+              },
+            ),
 
             // Strictly Owner Section
             if (isOwner) ...[
@@ -245,9 +254,9 @@ class _AppShellState extends ConsumerState<AppShell> {
               ListTile(
                 leading: const Icon(Icons.analytics, color: AppTheme.warningOrange),
                 title: Text('اللوحة المالية والتقفيل الشهري', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                selected: _currentIndex == 7,
+                selected: _currentIndex == 8,
                 onTap: () {
-                  setState(() => _currentIndex = 7);
+                  setState(() => _currentIndex = 8);
                   Navigator.pop(context);
                 },
               ),
@@ -266,15 +275,6 @@ class _AppShellState extends ConsumerState<AppShell> {
                 selected: _currentIndex == 9,
                 onTap: () {
                   setState(() => _currentIndex = 9);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.groups, color: AppTheme.warningOrange),
-                title: Text('كشف نزول المجموعة والمشتركين', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                selected: _currentIndex == 8,
-                onTap: () {
-                  setState(() => _currentIndex = 8);
                   Navigator.pop(context);
                 },
               ),
@@ -357,7 +357,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           if (_currentIndex == 0) return 0;
           if (_currentIndex == 1) return 1;
           if (_currentIndex == 3) return 2;
-          if (isOwner && _currentIndex == 7) return 3;
+          if (isOwner && _currentIndex == 8) return 3;
           if (isOwner && _currentIndex == 12) return 4;
           return 0;
         }(),
@@ -365,7 +365,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           if (idx == 0) setState(() => _currentIndex = 0);
           if (idx == 1) setState(() => _currentIndex = 1);
           if (idx == 2) setState(() => _currentIndex = 3);
-          if (isOwner && idx == 3) setState(() => _currentIndex = 7);
+          if (isOwner && idx == 3) setState(() => _currentIndex = 8);
           if (isOwner && idx == 4) setState(() => _currentIndex = 12);
         },
         destinations: [
