@@ -5,6 +5,9 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dialogs.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/rbac/app_role.dart';
+import '../../../data/local/local_store.dart';
+import '../../auth/providers/auth_provider.dart';
 import '../models/player_model.dart';
 import '../providers/player_provider.dart';
 import 'player_registration_screen.dart';
@@ -20,9 +23,47 @@ class _PlayersListScreenState extends ConsumerState<PlayersListScreen> {
   String _searchQuery = '';
   String? _filterType;
 
+  void _confirmDeletePlayer(PlayerModel player) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed),
+            const SizedBox(width: 8),
+            Text('تأكيد حذف اللاعب', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'هل أنت متأكد من حذف اللاعب «${player.playerName}» (كود: ${player.playerCode}) نهائياً من النظام؟',
+          style: GoogleFonts.cairo(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.errorRed,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () {
+              LocalStore.instance.deletePlayer(player.id);
+              Navigator.pop(ctx);
+              AppDialogs.showSuccessSnackBar(context, 'تم حذف اللاعب ${player.playerName} بنجاح');
+            },
+            child: const Text('حذف نهائي'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final playersAsync = ref.watch(playersStreamProvider);
+    final isOwner = ref.watch(currentUserProvider).value?.role.isOwner ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -162,6 +203,14 @@ class _PlayersListScreenState extends ConsumerState<PlayersListScreen> {
                               tooltip: 'عرض كارت QR',
                               onPressed: () => AppDialogs.showPlayerCardDialog(context, player),
                             ),
+                            if (isOwner) ...[
+                              const SizedBox(width: 2),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed),
+                                tooltip: 'حذف اللاعب نهائياً (صلاحية المالك)',
+                                onPressed: () => _confirmDeletePlayer(player),
+                              ),
+                            ],
                           ],
                         ),
                         onTap: () => AppDialogs.showPlayerCardDialog(context, player),
