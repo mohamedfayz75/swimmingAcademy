@@ -789,6 +789,12 @@ class LocalStore {
     }
   }
 
+  void deletePlayer(String idOrCode) {
+    _players.removeWhere((p) => p.id == idOrCode || p.playerCode.toUpperCase() == idOrCode.toUpperCase());
+    _playersController.add(List.unmodifiable(_players));
+    _saveAll();
+  }
+
   // --- Groups ---
   List<GroupModel> getGroups() => List.unmodifiable(_groups);
 
@@ -949,8 +955,30 @@ class LocalStore {
     }
   }
 
+  void deleteSubscription(String id) {
+    final subIndex = _subscriptions.indexWhere((s) => s.id == id);
+    if (subIndex != -1) {
+      final sub = _subscriptions[subIndex];
+      decrementGroupRegistered(sub.groupCode);
+      _subscriptions.removeAt(subIndex);
+      _subscriptionsController.add(List.unmodifiable(_subscriptions));
+      _saveAll();
+    }
+  }
+
   // --- Attendance ---
   List<AttendanceModel> getAttendance() => List.unmodifiable(_attendance);
+
+  bool hasPlayerAttendedToday(String playerCode) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final cleanCode = playerCode.trim().toUpperCase();
+    return _attendance.any((a) {
+      if (a.playerCode.trim().toUpperCase() != cleanCode) return false;
+      final date = a.timestamp.toDate();
+      return date.isAfter(todayStart);
+    });
+  }
 
   AttendanceModel recordAttendance(AttendanceModel model) {
     _attendance.insert(0, model);
