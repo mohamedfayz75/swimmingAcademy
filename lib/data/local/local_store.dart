@@ -1202,33 +1202,92 @@ class LocalStore {
     _saveAll();
   }
 
+  void updateExpense(ExpenseModel expense) {
+    final index = _expenses.indexWhere((e) => e.id == expense.id);
+    if (index != -1) {
+      _expenses[index] = expense;
+      _expensesController.add(List.unmodifiable(_expenses));
+      _saveAll();
+    }
+  }
+
+  void deleteExpense(String expenseId) {
+    _expenses.removeWhere((e) => e.id == expenseId);
+    _expensesController.add(List.unmodifiable(_expenses));
+    _saveAll();
+  }
+
   GeneralAccountingModel calculateFinancials(String monthYear) {
     double subRevenues = 0;
     double stampRevenues = 0;
+    double allTimeSubRevenues = 0;
+    double allTimeStampRevenues = 0;
 
     for (final s in _subscriptions) {
-      subRevenues += s.amountPaid;
-      stampRevenues += s.stampCardFee;
+      allTimeSubRevenues += s.amountPaid;
+      allTimeStampRevenues += s.stampCardFee;
+
+      final sDate = s.paymentDate.toDate();
+      final sMonthYear = '${sDate.month.toString().padLeft(2, '0')}-${sDate.year}';
+      if (sMonthYear == monthYear) {
+        subRevenues += s.amountPaid;
+        stampRevenues += s.stampCardFee;
+      }
     }
 
     double payrollTotal = 0;
-    for (final p in _payrolls.where((p) => p.monthYear == monthYear && p.isPaid)) {
-      payrollTotal += p.netPayable;
+    double allTimePayroll = 0;
+    for (final p in _payrolls.where((p) => p.isPaid)) {
+      allTimePayroll += p.netPayable;
+      if (p.monthYear == monthYear) {
+        payrollTotal += p.netPayable;
+      }
     }
 
     double generalExpensesTotal = 0;
-    for (final e in _expenses.where((e) => e.monthYear == monthYear)) {
-      generalExpensesTotal += e.amount;
+    double allTimeExpenses = 0;
+    for (final e in _expenses) {
+      allTimeExpenses += e.amount;
+      if (e.monthYear == monthYear) {
+        generalExpensesTotal += e.amount;
+      }
     }
+
+    final allTimeVault = (allTimeSubRevenues + allTimeStampRevenues) - (allTimePayroll + allTimeExpenses);
 
     return GeneralAccountingModel(
       monthYear: monthYear,
       totalSubscriptionRevenues: subRevenues,
       totalStampCardRevenues: stampRevenues,
       totalCoachPayroll: payrollTotal,
-      totalWaterCardExpenses: 0, // Already included seamlessly in generalExpensesTotal!
+      totalWaterCardExpenses: 0,
       otherExpenses: generalExpensesTotal,
+      allTimeCumulativeVault: allTimeVault,
     );
+  }
+
+  Future<void> wipeAllTestData() async {
+    _players.clear();
+    _subscriptions.clear();
+    _attendance.clear();
+    _expenses.clear();
+    _waterCards.clear();
+    _poolOverdraftNotes.clear();
+    _payrolls.clear();
+
+    for (int i = 0; i < _groups.length; i++) {
+      _groups[i] = _groups[i].copyWith(currentRegistered: 0);
+    }
+
+    _playersController.add(List.unmodifiable(_players));
+    _subscriptionsController.add(List.unmodifiable(_subscriptions));
+    _attendanceController.add(List.unmodifiable(_attendance));
+    _expensesController.add(List.unmodifiable(_expenses));
+    _waterCardsController.add(List.unmodifiable(_waterCards));
+    _groupsController.add(List.unmodifiable(_groups));
+    _payrollsController.add(List.unmodifiable(_payrolls));
+
+    await _saveAll();
   }
 
   // --- Users Management (Staff & Admin) ---
