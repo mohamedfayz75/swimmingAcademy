@@ -52,6 +52,24 @@ class AttendanceRepository {
       );
     }
 
+    // 3. Check 60-minute duplicate cooldown (allows makeup session after 1 hour)
+    final recentRecord = _store.getRecentAttendanceForPlayer(cleanCode, withinMinutes: 60);
+    if (recentRecord != null) {
+      final recDate = recentRecord.timestamp.toDate();
+      final elapsedMinutes = DateTime.now().difference(recDate).inMinutes;
+      final timeFormatted =
+          '${recDate.hour.toString().padLeft(2, '0')}:${recDate.minute.toString().padLeft(2, '0')}';
+      return AttendanceResult(
+        success: false,
+        message:
+            '⚠️ اللاعب ${player.playerName} مسجل حضور بالفعل منذ $elapsedMinutes دقيقة (الساعة $timeFormatted).\nلمنع تكرار الخصم بالخطأ، يمكن تسجيل حصة تعويضية ثانية بعد مرور ساعة.',
+        player: player,
+        subscription: subscription,
+        currentSession: subscription.attendedSessions,
+        totalSessions: subscription.sessionsCount,
+      );
+    }
+
     // Check if subscription sessions are already depleted
     if (subscription.attendedSessions >= subscription.sessionsCount) {
       return AttendanceResult(
