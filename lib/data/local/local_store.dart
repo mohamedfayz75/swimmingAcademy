@@ -20,9 +20,7 @@ import '../../core/rbac/app_role.dart';
 class LocalStore {
   static final LocalStore instance = LocalStore._internal();
 
-  LocalStore._internal() {
-    _initSampleData();
-  }
+  LocalStore._internal();
 
   bool _isInitialized = false;
 
@@ -102,233 +100,178 @@ class LocalStore {
       final prefs = await SharedPreferences.getInstance();
       final hasData = prefs.getBool('sw_data_initialized') ?? false;
 
-      // 1. Load Players Independently
-      final playersJson = prefs.getString('sw_players');
-      if (playersJson != null && playersJson.trim().isNotEmpty) {
-        try {
-          final List list = jsonDecode(playersJson);
-          final loaded = <PlayerModel>[];
-          for (final item in list) {
-            try {
-              loaded.add(PlayerModel.fromMap(Map<String, dynamic>.from(item)));
-            } catch (e) {
-              debugPrint('Error decoding single player: $e');
-            }
-          }
-          if (loaded.isNotEmpty) {
-            _players.clear();
-            _players.addAll(loaded);
-          }
-        } catch (e) {
-          debugPrint('Error decoding sw_players: $e');
-        }
-      }
-
-      // 2. Load Subscriptions Independently
-      final subsJson = prefs.getString('sw_subscriptions');
-      if (subsJson != null && subsJson.trim().isNotEmpty) {
-        try {
-          final List list = jsonDecode(subsJson);
-          final loaded = <SubscriptionModel>[];
-          for (final item in list) {
-            try {
-              loaded.add(SubscriptionModel.fromMap(Map<String, dynamic>.from(item)));
-            } catch (e) {
-              debugPrint('Error decoding single subscription: $e');
-            }
-          }
-          if (loaded.isNotEmpty) {
-            _subscriptions.clear();
-            _subscriptions.addAll(loaded);
-          }
-        } catch (e) {
-          debugPrint('Error decoding sw_subscriptions: $e');
-        }
-      }
-
-      // 3. Load Groups Independently
-      final groupsJson = prefs.getString('sw_groups');
-      if (groupsJson != null && groupsJson.trim().isNotEmpty) {
-        try {
-          final List list = jsonDecode(groupsJson);
-          final loaded = <GroupModel>[];
-          for (final item in list) {
-            try {
-              loaded.add(GroupModel.fromMap(Map<String, dynamic>.from(item)));
-            } catch (e) {
-              debugPrint('Error decoding single group: $e');
-            }
-          }
-          if (loaded.isNotEmpty) {
-            _groups.clear();
-            _groups.addAll(loaded);
-          }
-        } catch (e) {
-          debugPrint('Error decoding sw_groups: $e');
-        }
-      }
-
-      // 4. Load Attendance Independently
-      final attJson = prefs.getString('sw_attendance');
-      if (attJson != null && attJson.trim().isNotEmpty) {
-        try {
-          final List list = jsonDecode(attJson);
-          final loaded = <AttendanceModel>[];
-          for (final item in list) {
-            try {
-              loaded.add(AttendanceModel.fromMap(Map<String, dynamic>.from(item)));
-            } catch (e) {
-              debugPrint('Error decoding single attendance: $e');
-            }
-          }
-          if (loaded.isNotEmpty) {
-            _attendance.clear();
-            _attendance.addAll(loaded);
-          }
-        } catch (e) {
-          debugPrint('Error decoding sw_attendance: $e');
-        }
-      }
-
-      // 5. Load Water Cards Independently
-      final wcJson = prefs.getString('sw_water_cards');
-      if (wcJson != null && wcJson.trim().isNotEmpty) {
-        try {
-          final List list = jsonDecode(wcJson);
-          final loaded = <WaterCardModel>[];
-          for (final item in list) {
-            try {
-              loaded.add(WaterCardModel.fromMap(Map<String, dynamic>.from(item)));
-            } catch (e) {
-              debugPrint('Error decoding single water card: $e');
-            }
-          }
-          if (loaded.isNotEmpty) {
-            _waterCards.clear();
-            _waterCards.addAll(loaded);
-          }
-        } catch (e) {
-          debugPrint('Error decoding sw_water_cards: $e');
-        }
-      }
-
-      // 6. Load Pool Overdraft Notes Independently
-      final ponJson = prefs.getString('sw_pool_overdraft_notes');
-      if (ponJson != null && ponJson.trim().isNotEmpty) {
-        try {
-          final List list = jsonDecode(ponJson);
-          final loaded = <PoolOverdraftNoteModel>[];
-          for (final item in list) {
-            try {
-              loaded.add(PoolOverdraftNoteModel.fromMap(Map<String, dynamic>.from(item)));
-            } catch (e) {
-              debugPrint('Error decoding single overdraft note: $e');
-            }
-          }
-          if (loaded.isNotEmpty) {
-            _poolOverdraftNotes.clear();
-            _poolOverdraftNotes.addAll(loaded);
-          }
-        } catch (e) {
-          debugPrint('Error decoding sw_pool_overdraft_notes: $e');
-        }
-      }
-
-      // 7. Load Coaches Independently
-      final coachesJson = prefs.getString('sw_coaches');
-      if (coachesJson != null && coachesJson.trim().isNotEmpty) {
-        try {
-          final List list = jsonDecode(coachesJson);
-          final loaded = <CoachModel>[];
-          for (final item in list) {
-            try {
-              loaded.add(CoachModel.fromMap(Map<String, dynamic>.from(item)));
-            } catch (e) {
-              debugPrint('Error decoding single coach: $e');
-            }
-          }
-          if (loaded.isNotEmpty) {
-            _coaches.clear();
-            _coaches.addAll(loaded);
-          }
-        } catch (e) {
-          debugPrint('Error decoding sw_coaches: $e');
-        }
-      }
-
-      // 8. Load Payrolls Independently
-      final payrollsJson = prefs.getString('sw_payrolls');
-      if (payrollsJson != null && payrollsJson.trim().isNotEmpty) {
-        try {
-          final List list = jsonDecode(payrollsJson);
-          final loaded = <PayrollModel>[];
-          for (final item in list) {
-            try {
-              loaded.add(PayrollModel.fromMap(Map<String, dynamic>.from(item)));
-            } catch (e) {
-              debugPrint('Error decoding single payroll: $e');
-            }
-          }
-          if (loaded.isNotEmpty) {
-            _payrolls.clear();
-            _payrolls.addAll(loaded);
-          }
-        } catch (e) {
-          debugPrint('Error decoding sw_payrolls: $e');
-        }
-      }
-
-      // 9. Load Expenses Independently
-      final expJson = prefs.getString('sw_expenses');
-      if (expJson != null && expJson.trim().isNotEmpty) {
-        try {
-          final List list = jsonDecode(expJson);
-          final loaded = <ExpenseModel>[];
-          for (final item in list) {
-            try {
-              loaded.add(ExpenseModel.fromMap(Map<String, dynamic>.from(item)));
-            } catch (e) {
-              debugPrint('Error decoding single expense: $e');
-            }
-          }
-          if (loaded.isNotEmpty) {
-            _expenses.clear();
-            _expenses.addAll(loaded);
-          }
-        } catch (e) {
-          debugPrint('Error decoding sw_expenses: $e');
-        }
-      }
-
-      // 10. Load Users Independently
-      final usersJson = prefs.getString('sw_users');
-      if (usersJson != null && usersJson.trim().isNotEmpty) {
-        try {
-          final List list = jsonDecode(usersJson);
-          final loaded = <UserModel>[];
-          for (final item in list) {
-            try {
-              loaded.add(UserModel.fromMap(Map<String, dynamic>.from(item)));
-            } catch (e) {
-              debugPrint('Error decoding single user: $e');
-            }
-          }
-          if (loaded.isNotEmpty) {
-            _users.clear();
-            _users.addAll(loaded);
-          }
-        } catch (e) {
-          debugPrint('Error decoding sw_users: $e');
-        }
-      }
-
-      // Only seed starter data if this is the very first install ever AND all collections are empty!
-      if (!hasData && _players.isEmpty && _subscriptions.isEmpty && _groups.isEmpty) {
+      if (!hasData) {
+        // Very first launch on fresh install: seed starter sample data
         _initSampleData();
         await prefs.setBool('sw_data_initialized', true);
         await _saveAll();
       } else {
-        await prefs.setBool('sw_data_initialized', true);
+        // App has been initialized: load saved state faithfully (including wiped/empty state)
+        
+        // 1. Players
+        final playersJson = prefs.getString('sw_players');
+        if (playersJson != null) {
+          try {
+            final List list = jsonDecode(playersJson);
+            _players.clear();
+            for (final item in list) {
+              try {
+                _players.add(PlayerModel.fromMap(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_players: $e');
+          }
+        }
+
+        // 2. Subscriptions
+        final subsJson = prefs.getString('sw_subscriptions');
+        if (subsJson != null) {
+          try {
+            final List list = jsonDecode(subsJson);
+            _subscriptions.clear();
+            for (final item in list) {
+              try {
+                _subscriptions.add(SubscriptionModel.fromMap(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_subscriptions: $e');
+          }
+        }
+
+        // 3. Groups
+        final groupsJson = prefs.getString('sw_groups');
+        if (groupsJson != null) {
+          try {
+            final List list = jsonDecode(groupsJson);
+            _groups.clear();
+            for (final item in list) {
+              try {
+                _groups.add(GroupModel.fromMap(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_groups: $e');
+          }
+        }
+
+        // 4. Attendance
+        final attJson = prefs.getString('sw_attendance');
+        if (attJson != null) {
+          try {
+            final List list = jsonDecode(attJson);
+            _attendance.clear();
+            for (final item in list) {
+              try {
+                _attendance.add(AttendanceModel.fromMap(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_attendance: $e');
+          }
+        }
+
+        // 5. Water Cards
+        final wcJson = prefs.getString('sw_water_cards');
+        if (wcJson != null) {
+          try {
+            final List list = jsonDecode(wcJson);
+            _waterCards.clear();
+            for (final item in list) {
+              try {
+                _waterCards.add(WaterCardModel.fromMap(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_water_cards: $e');
+          }
+        }
+
+        // 6. Pool Overdraft Notes
+        final ponJson = prefs.getString('sw_pool_overdraft_notes');
+        if (ponJson != null) {
+          try {
+            final List list = jsonDecode(ponJson);
+            _poolOverdraftNotes.clear();
+            for (final item in list) {
+              try {
+                _poolOverdraftNotes.add(PoolOverdraftNoteModel.fromMap(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_pool_overdraft_notes: $e');
+          }
+        }
+
+        // 7. Coaches
+        final coachesJson = prefs.getString('sw_coaches');
+        if (coachesJson != null) {
+          try {
+            final List list = jsonDecode(coachesJson);
+            _coaches.clear();
+            for (final item in list) {
+              try {
+                _coaches.add(CoachModel.fromMap(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_coaches: $e');
+          }
+        }
+
+        // 8. Payrolls
+        final payrollsJson = prefs.getString('sw_payrolls');
+        if (payrollsJson != null) {
+          try {
+            final List list = jsonDecode(payrollsJson);
+            _payrolls.clear();
+            for (final item in list) {
+              try {
+                _payrolls.add(PayrollModel.fromMap(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_payrolls: $e');
+          }
+        }
+
+        // 9. Expenses
+        final expJson = prefs.getString('sw_expenses');
+        if (expJson != null) {
+          try {
+            final List list = jsonDecode(expJson);
+            _expenses.clear();
+            for (final item in list) {
+              try {
+                _expenses.add(ExpenseModel.fromMap(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_expenses: $e');
+          }
+        }
+
+        // 10. Users
+        final usersJson = prefs.getString('sw_users');
+        if (usersJson != null) {
+          try {
+            final List list = jsonDecode(usersJson);
+            _users.clear();
+            for (final item in list) {
+              try {
+                _users.add(UserModel.fromMap(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_users: $e');
+          }
+        }
+
+        // Fallback: If for any reason users list is empty, ensure default admin/owner accounts exist
+        if (_users.isEmpty) {
+          _initDefaultUsers();
+        }
       }
     } catch (e) {
       debugPrint('LocalStore.init error: $e');
@@ -495,8 +438,33 @@ class LocalStore {
     await _saveAll();
   }
 
-  void _initSampleData() {
+  void _initDefaultUsers() {
     _users.clear();
+    final now = Timestamp.now();
+    _users.addAll([
+      UserModel(
+        uid: 'user-owner-1',
+        username: 'owner',
+        password: '123',
+        email: 'owner@swimmingworld.com',
+        displayName: 'المالك العام',
+        role: UserRole.owner,
+        createdAt: now,
+      ),
+      UserModel(
+        uid: 'user-staff-1',
+        username: 'staff',
+        password: '123',
+        email: 'staff@swimmingworld.com',
+        displayName: 'موظف الاستقبال',
+        role: UserRole.staff,
+        createdAt: now,
+      ),
+    ]);
+  }
+
+  void _initSampleData() {
+    _initDefaultUsers();
     _players.clear();
     _groups.clear();
     _subscriptions.clear();
@@ -979,6 +947,20 @@ class LocalStore {
       final date = a.timestamp.toDate();
       return date.isAfter(todayStart);
     });
+  }
+
+  AttendanceModel? getRecentAttendanceForPlayer(String playerCode, {int withinMinutes = 60}) {
+    final now = DateTime.now();
+    final cleanCode = playerCode.trim().toUpperCase();
+    for (final a in _attendance) {
+      if (a.playerCode.trim().toUpperCase() == cleanCode) {
+        final diff = now.difference(a.timestamp.toDate()).inMinutes;
+        if (diff >= 0 && diff < withinMinutes) {
+          return a;
+        }
+      }
+    }
+    return null;
   }
 
   AttendanceModel recordAttendance(AttendanceModel model) {
