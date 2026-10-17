@@ -21,4 +21,19 @@ class DashboardRepository {
   Future<void> addExpense(ExpenseModel expense) async {
     _store.addExpense(expense);
   }
+
+  // Update expense
+  Future<void> updateExpense(ExpenseModel expense) async {
+    _store.updateExpense(expense);
+  }
+
+  // Delete expense
+  Future<void> deleteExpense(String expenseId) async {
+    _store.deleteExpense(expenseId);
+  }
+
+  // Wipe all test data
+  Future<void> wipeAllTestData() async {
+    await _store.wipeAllTestData();
+  }
 }
