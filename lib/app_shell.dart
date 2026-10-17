@@ -14,6 +14,7 @@ import 'features/groups/presentation/groups_management_screen.dart';
 import 'features/groups/presentation/pool_slot_matrix_screen.dart';
 import 'features/owner_dashboard/presentation/group_attendees_screen.dart';
 import 'features/owner_dashboard/presentation/owner_dashboard_screen.dart';
+import 'features/owner_dashboard/presentation/expenses_management_screen.dart';
 import 'features/players/presentation/player_registration_screen.dart';
 import 'features/players/presentation/players_list_screen.dart';
 import 'features/subscriptions/presentation/subscription_entry_screen.dart';
@@ -52,10 +53,11 @@ class _AppShellState extends ConsumerState<AppShell> {
     // Owner Dedicated Screens
     final List<Widget> ownerScreens = [
       const OwnerDashboardScreen(),            // 8: Financial Dashboard & Closures
-      const CoachPayrollScreen(),              // 9: Coach Payroll & Advances
-      const CoachesListScreen(),               // 10: Coaches Directory
-      const GroupsManagementScreen(),          // 11: Groups Management
-      const UserManagementScreen(),            // 12: Staff & Users Management
+      const ExpensesManagementScreen(),        // 9: Expenses Management & Log
+      const CoachPayrollScreen(),              // 10: Coach Payroll & Advances
+      const CoachesListScreen(),               // 11: Coaches Directory
+      const GroupsManagementScreen(),          // 12: Groups Management
+      const UserManagementScreen(),            // 13: Staff & Users Management
     ];
 
     final List<Widget> screens = [
@@ -81,6 +83,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       'كشف نزول المجموعة والتمام للمسبح',
       if (isOwner) ...[
         'اللوحة المالية والتقفيل الشهري',
+        'سجل وإدارة المصروفات',
         'رواتب ومسيرات الكباتن',
         'دليل الكباتن والمدربين',
         'إدارة وإنشاء المجموعات',
@@ -261,17 +264,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.manage_accounts, color: AppTheme.warningOrange),
-                title: Text('إدارة المستخدمين والموظفين', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                selected: _currentIndex == 12,
-                onTap: () {
-                  setState(() => _currentIndex = 12);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.payments, color: AppTheme.warningOrange),
-                title: Text('رواتب ومسيرات الكباتن', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                leading: const Icon(Icons.receipt_long, color: AppTheme.warningOrange),
+                title: Text('سجل وإدارة المصروفات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 selected: _currentIndex == 9,
                 onTap: () {
                   setState(() => _currentIndex = 9);
@@ -279,8 +273,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.sports, color: AppTheme.warningOrange),
-                title: Text('دليل الكباتن والمدربين', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                leading: const Icon(Icons.payments, color: AppTheme.warningOrange),
+                title: Text('رواتب ومسيرات الكباتن', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 selected: _currentIndex == 10,
                 onTap: () {
                   setState(() => _currentIndex = 10);
@@ -288,11 +282,29 @@ class _AppShellState extends ConsumerState<AppShell> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.tune, color: AppTheme.warningOrange),
-                title: Text('إدارة وإنشاء المجموعات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                leading: const Icon(Icons.sports, color: AppTheme.warningOrange),
+                title: Text('دليل الكباتن والمدربين', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 selected: _currentIndex == 11,
                 onTap: () {
                   setState(() => _currentIndex = 11);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.tune, color: AppTheme.warningOrange),
+                title: Text('إدارة وإنشاء المجموعات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                selected: _currentIndex == 12,
+                onTap: () {
+                  setState(() => _currentIndex = 12);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.manage_accounts, color: AppTheme.warningOrange),
+                title: Text('إدارة المستخدمين والموظفين', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                selected: _currentIndex == 13,
+                onTap: () {
+                  setState(() => _currentIndex = 13);
                   Navigator.pop(context);
                 },
               ),
@@ -358,7 +370,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           if (_currentIndex == 1) return 1;
           if (_currentIndex == 3) return 2;
           if (isOwner && _currentIndex == 8) return 3;
-          if (isOwner && _currentIndex == 12) return 4;
+          if (isOwner && _currentIndex == 13) return 4;
           return 0;
         }(),
         onDestinationSelected: (idx) {
@@ -366,7 +378,7 @@ class _AppShellState extends ConsumerState<AppShell> {
           if (idx == 1) setState(() => _currentIndex = 1);
           if (idx == 2) setState(() => _currentIndex = 3);
           if (isOwner && idx == 3) setState(() => _currentIndex = 8);
-          if (isOwner && idx == 4) setState(() => _currentIndex = 12);
+          if (isOwner && idx == 4) setState(() => _currentIndex = 13);
         },
         destinations: [
           const NavigationDestination(
