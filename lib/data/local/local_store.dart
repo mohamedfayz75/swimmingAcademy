@@ -1279,13 +1279,8 @@ class LocalStore {
       _groups[i] = _groups[i].copyWith(currentRegistered: 0);
     }
 
-    _playersController.add(List.unmodifiable(_players));
-    _subscriptionsController.add(List.unmodifiable(_subscriptions));
-    _attendanceController.add(List.unmodifiable(_attendance));
-    _expensesController.add(List.unmodifiable(_expenses));
-    _waterCardsController.add(List.unmodifiable(_waterCards));
-    _groupsController.add(List.unmodifiable(_groups));
-    _payrollsController.add(List.unmodifiable(_payrolls));
+    _notifyAll();
+    _poolOverdraftNotesController.add(List.unmodifiable(_poolOverdraftNotes));
 
     await _saveAll();
   }
