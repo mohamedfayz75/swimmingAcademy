@@ -53,13 +53,21 @@ class ExpenseModel {
     );
   }
 
-  Map<String, dynamic> toFirestore() {
-    return {
-      'category': category,
-      'amount': amount,
-      'date': date,
-      'notes': notes,
-      'month_year': monthYear,
-    };
+  ExpenseModel copyWith({
+    String? id,
+    String? category,
+    double? amount,
+    Timestamp? date,
+    String? notes,
+    String? monthYear,
+  }) {
+    return ExpenseModel(
+      id: id ?? this.id,
+      category: category ?? this.category,
+      amount: amount ?? this.amount,
+      date: date ?? this.date,
+      notes: notes ?? this.notes,
+      monthYear: monthYear ?? this.monthYear,
+    );
   }
 }
