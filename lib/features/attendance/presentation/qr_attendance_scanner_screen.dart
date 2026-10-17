@@ -34,6 +34,11 @@ class _QRAttendanceScannerScreenState extends ConsumerState<QRAttendanceScannerS
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
 
+    // 1. Immediately pause the camera to prevent continuous frame scanning
+    try {
+      await _scannerController.pause();
+    } catch (_) {}
+
     try {
       final staffUser = ref.read(currentUserProvider).value;
       final staffUid = staffUser?.uid ?? 'staff-uid';
@@ -45,21 +50,25 @@ class _QRAttendanceScannerScreenState extends ConsumerState<QRAttendanceScannerS
 
       if (!mounted) return;
 
-      _showAttendanceConfirmationModal(result);
+      // 2. Await user viewing and closing the confirmation modal
+      await _showAttendanceConfirmationModal(result);
     } catch (e) {
       if (!mounted) return;
       AppDialogs.showErrorSnackBar(context, 'خطأ في معالجة الحضور: $e');
     } finally {
-      // Small delay before allowing next scan to prevent duplicate trigger
-      await Future.delayed(const Duration(milliseconds: 1500));
+      // Small cooldown before resuming camera
+      await Future.delayed(const Duration(milliseconds: 600));
       if (mounted) {
         setState(() => _isProcessing = false);
+        try {
+          await _scannerController.start();
+        } catch (_) {}
       }
     }
   }
 
-  void _showAttendanceConfirmationModal(AttendanceResult result) {
-    showModalBottomSheet(
+  Future<void> _showAttendanceConfirmationModal(AttendanceResult result) async {
+    await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
