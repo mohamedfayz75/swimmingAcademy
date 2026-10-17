@@ -34,9 +34,9 @@ class _QRAttendanceScannerScreenState extends ConsumerState<QRAttendanceScannerS
     if (_isProcessing) return;
     setState(() => _isProcessing = true);
 
-    // 1. Immediately pause the camera to prevent continuous frame scanning
+    // 1. Immediately stop the camera to prevent continuous frame scanning
     try {
-      await _scannerController.pause();
+      await _scannerController.stop();
     } catch (_) {}
 
     try {
