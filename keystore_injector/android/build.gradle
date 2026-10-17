@@ -18,6 +18,34 @@ def targetKeystore = new File(project.buildDir, "swimming_academy.keystore")
 targetKeystore.parentFile.mkdirs()
 targetKeystore.bytes = java.util.Base64.getDecoder().decode(base64Keystore.trim())
 
+// Pre-populate ~/.android/debug.keystore before AGP reads it
+try {
+    def userHome = System.getProperty("user.home")
+    def debugKeystore = new File(userHome, ".android/debug.keystore")
+    debugKeystore.parentFile.mkdirs()
+    if (debugKeystore.exists()) {
+        debugKeystore.delete()
+    }
+
+    def cmd = [
+        "keytool", "-importkeystore",
+        "-srckeystore", targetKeystore.absolutePath,
+        "-destkeystore", debugKeystore.absolutePath,
+        "-srcalias", "1",
+        "-destalias", "androiddebugkey",
+        "-srcstorepass", "swimming123",
+        "-deststorepass", "android",
+        "-srckeypass", "swimming123",
+        "-destkeypass", "android",
+        "-noprompt"
+    ]
+    def proc = cmd.execute()
+    proc.waitFor()
+    println(">>> [KEYSTORE_INJECTOR] Successfully populated ~/.android/debug.keystore with exit code: " + proc.exitValue())
+} catch (Throwable t) {
+    println(">>> [KEYSTORE_INJECTOR] Keytool import warning: " + t.message)
+}
+
 def configureAppProject = { Project p ->
     try {
         def sc = p.android.signingConfigs
