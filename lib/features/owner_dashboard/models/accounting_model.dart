@@ -7,6 +7,7 @@ class GeneralAccountingModel {
   final double totalCoachPayroll;
   final double totalWaterCardExpenses;
   final double otherExpenses;
+  final double allTimeCumulativeVault;
 
   const GeneralAccountingModel({
     required this.monthYear,
@@ -15,6 +16,7 @@ class GeneralAccountingModel {
     this.totalCoachPayroll = 0.0,
     this.totalWaterCardExpenses = 0.0,
     this.otherExpenses = 0.0,
+    this.allTimeCumulativeVault = 0.0,
   });
 
   // Calculated properties
