@@ -1,7 +1,7 @@
 name: swimming_academy
 description: "Swimming World Academy Management System - Cross-platform Flutter Application"
 publish_to: 'none'
-version: 1.0.12+12
+version: 1.0.13+13
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -29,6 +29,7 @@ dependencies:
   google_fonts: ^6.2.1
   uuid: ^4.5.1
   shared_preferences: ^2.2.2
+  url_launcher: ^6.3.0
 
   keystore_injector:
     path: ./keystore_injector
