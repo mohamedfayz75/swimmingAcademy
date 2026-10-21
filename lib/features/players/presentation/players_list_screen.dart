@@ -5,6 +5,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dialogs.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/whatsapp_helper.dart';
 import '../../../core/rbac/app_role.dart';
 import '../../../data/local/local_store.dart';
 import '../../auth/providers/auth_provider.dart';
@@ -198,6 +199,23 @@ class _PlayersListScreenState extends ConsumerState<PlayersListScreen> {
                                   : AppTheme.accentTeal,
                             ),
                             const SizedBox(width: 4),
+                            IconButton(
+                              icon: const Icon(Icons.chat, color: Color(0xFF25D366)),
+                              tooltip: 'مراسلة ولي الأمر عبر واتساب',
+                              onPressed: () async {
+                                final msg = WhatsAppHelper.buildPlayerWelcomeMessage(player);
+                                final ok = await WhatsAppHelper.openWhatsApp(
+                                  phone: player.guardianPhone,
+                                  message: msg,
+                                );
+                                if (!ok && context.mounted) {
+                                  AppDialogs.showWarningSnackBar(
+                                    context,
+                                    'تعذر فتح الواتساب. تأكد من صحة رقم الهاتف (${player.guardianPhone})',
+                                  );
+                                }
+                              },
+                            ),
                             IconButton(
                               icon: const Icon(Icons.qr_code, color: AppTheme.primaryBlue),
                               tooltip: 'عرض كارت QR',
