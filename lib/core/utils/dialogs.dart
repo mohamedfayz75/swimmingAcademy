@@ -4,6 +4,7 @@ import 'package:qr_flutter/qr_flutter.dart';
 import '../theme/app_theme.dart';
 import '../../features/players/models/player_model.dart';
 import 'formatters.dart';
+import 'whatsapp_helper.dart';
 
 class AppDialogs {
   static void showSuccessSnackBar(BuildContext context, String message) {
@@ -142,9 +143,38 @@ class AppDialogs {
                 ),
               ),
               const SizedBox(height: 20),
+              // WhatsApp Share Button
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
+                child: ElevatedButton.icon(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onPressed: () async {
+                    final msg = WhatsAppHelper.buildPlayerWelcomeMessage(player);
+                    final success = await WhatsAppHelper.openWhatsApp(
+                      phone: player.guardianPhone,
+                      message: msg,
+                    );
+                    if (!success && context.mounted) {
+                      AppDialogs.showWarningSnackBar(
+                        context,
+                        'تعذر فتح الواتساب. يرجى التأكد من تثبيت التطبيق وصحة رقم ولي الأمر (${player.guardianPhone})',
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.chat, color: Colors.white),
+                  label: Text(
+                    'إرسال كود العضوية والترحيب عبر واتساب',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 10),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: const Text('إغلاق'),
                 ),
