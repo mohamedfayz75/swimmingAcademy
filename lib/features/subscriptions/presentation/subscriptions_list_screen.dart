@@ -5,6 +5,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dialogs.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/whatsapp_helper.dart';
 import '../../../data/local/local_store.dart';
 import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_provider.dart';
@@ -387,6 +388,39 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                                               : (isPaid ? AppTheme.successGreen : AppTheme.warningOrange),
                                         ),
                                       ),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    IconButton(
+                                      icon: const Icon(Icons.chat, color: Color(0xFF25D366), size: 20),
+                                      tooltip: 'إرسال الفاتورة عبر واتساب',
+                                      visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () async {
+                                        final player = LocalStore.instance.getPlayerByCode(sub.playerCode);
+                                        final phone = player?.guardianPhone ?? '';
+                                        if (phone.isEmpty) {
+                                          AppDialogs.showWarningSnackBar(
+                                            context,
+                                            'رقم ولي الأمر غير مسجل للاعب (${sub.playerName})',
+                                          );
+                                          return;
+                                        }
+                                        final msg = WhatsAppHelper.buildSubscriptionInvoiceMessage(
+                                          sub: sub,
+                                          isRenewal: false,
+                                        );
+                                        final ok = await WhatsAppHelper.openWhatsApp(
+                                          phone: phone,
+                                          message: msg,
+                                        );
+                                        if (!ok && context.mounted) {
+                                          AppDialogs.showWarningSnackBar(
+                                            context,
+                                            'تعذر فتح الواتساب. تأكد من تثبيت التطبيق وصحة الرقم ($phone)',
+                                          );
+                                        }
+                                      },
                                     ),
                                     if (isOwner) ...[
                                       const SizedBox(width: 4),
