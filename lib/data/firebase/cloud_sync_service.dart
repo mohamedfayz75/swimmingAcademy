@@ -354,16 +354,16 @@ class CloudSyncService {
     try {
       await FirebaseFirestore.instance
           .collection('coaches')
-          .doc(coach.id)
+          .doc(coach.coachId)
           .set(coach.toFirestore(), SetOptions(merge: true));
     } catch (e) {
       debugPrint('CloudSync pushCoach error: $e');
     }
   }
 
-  Future<void> deleteCoach(String id) async {
+  Future<void> deleteCoach(String coachId) async {
     try {
-      await FirebaseFirestore.instance.collection('coaches').doc(id).delete();
+      await FirebaseFirestore.instance.collection('coaches').doc(coachId).delete();
     } catch (e) {
       debugPrint('CloudSync deleteCoach error: $e');
     }
@@ -371,10 +371,11 @@ class CloudSyncService {
 
   Future<void> pushPayroll(PayrollModel payroll) async {
     try {
+      final docId = '${payroll.coachId}_${payroll.monthYear}';
       await FirebaseFirestore.instance
           .collection('payroll')
-          .doc(payroll.id)
-          .set(payroll.toFirestore(), SetOptions(merge: true));
+          .doc(docId)
+          .set(payroll.toMap(), SetOptions(merge: true));
     } catch (e) {
       debugPrint('CloudSync pushPayroll error: $e');
     }
@@ -433,7 +434,7 @@ class CloudSyncService {
 
       // 7. Upload Coaches
       for (final c in store.getCoaches()) {
-        await firestore.collection('coaches').doc(c.id).set(c.toFirestore(), SetOptions(merge: true));
+        await firestore.collection('coaches').doc(c.coachId).set(c.toFirestore(), SetOptions(merge: true));
       }
 
       // 8. Upload Users
