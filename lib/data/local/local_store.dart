@@ -569,7 +569,7 @@ class LocalStore {
   void mergeRemoteCoaches(List<CoachModel> remote) {
     bool changed = false;
     for (final c in remote) {
-      final index = _coaches.indexWhere((x) => x.id == c.id);
+      final index = _coaches.indexWhere((x) => x.coachId == c.coachId);
       if (index != -1) {
         _coaches[index] = c;
         changed = true;
@@ -1358,6 +1358,8 @@ class LocalStore {
   }
 
   // --- Expenses & Accounting ---
+  List<ExpenseModel> getExpenses() => List.unmodifiable(_expenses);
+
   List<ExpenseModel> getExpensesForMonth(String monthYear) {
     return _expenses.where((e) => e.monthYear == monthYear).toList();
   }
