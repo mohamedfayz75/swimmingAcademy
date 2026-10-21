@@ -364,7 +364,7 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
               ),
               const Divider(height: 20),
               Container(
-                maxHeight: 220,
+                constraints: const BoxConstraints(maxHeight: 220),
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF25D366).withOpacity(0.06),
