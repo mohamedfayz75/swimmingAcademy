@@ -16,6 +16,7 @@ import '../../features/water_cards/models/pool_overdraft_model.dart';
 
 import '../../features/auth/models/user_model.dart';
 import '../../core/rbac/app_role.dart';
+import '../firebase/cloud_sync_service.dart';
 
 class LocalStore {
   static final LocalStore instance = LocalStore._internal();
@@ -438,6 +439,169 @@ class LocalStore {
     await _saveAll();
   }
 
+  // --- Live Cloud Merge Methods ---
+  void mergeRemotePlayers(List<PlayerModel> remote) {
+    bool changed = false;
+    for (final p in remote) {
+      final index = _players.indexWhere((x) => x.playerCode == p.playerCode);
+      if (index != -1) {
+        _players[index] = p;
+        changed = true;
+      } else {
+        _players.insert(0, p);
+        changed = true;
+      }
+    }
+    if (changed) {
+      _playersController.add(List.unmodifiable(_players));
+      _saveAll();
+    }
+  }
+
+  void mergeRemoteSubscriptions(List<SubscriptionModel> remote) {
+    bool changed = false;
+    for (final s in remote) {
+      final index = _subscriptions.indexWhere((x) => x.id == s.id);
+      if (index != -1) {
+        _subscriptions[index] = s;
+        changed = true;
+      } else {
+        _subscriptions.insert(0, s);
+        changed = true;
+      }
+    }
+    if (changed) {
+      _subscriptionsController.add(List.unmodifiable(_subscriptions));
+      _saveAll();
+    }
+  }
+
+  void mergeRemoteAttendance(List<AttendanceModel> remote) {
+    bool changed = false;
+    for (final a in remote) {
+      final index = _attendance.indexWhere((x) => x.id == a.id);
+      if (index != -1) {
+        _attendance[index] = a;
+        changed = true;
+      } else {
+        _attendance.insert(0, a);
+        changed = true;
+      }
+    }
+    if (changed) {
+      _attendanceController.add(List.unmodifiable(_attendance));
+      _saveAll();
+    }
+  }
+
+  void mergeRemoteGroups(List<GroupModel> remote) {
+    bool changed = false;
+    for (final g in remote) {
+      final index = _groups.indexWhere((x) => x.groupCode == g.groupCode);
+      if (index != -1) {
+        _groups[index] = g;
+        changed = true;
+      } else {
+        _groups.add(g);
+        changed = true;
+      }
+    }
+    if (changed) {
+      _groupsController.add(List.unmodifiable(_groups));
+      _saveAll();
+    }
+  }
+
+  void mergeRemoteExpenses(List<ExpenseModel> remote) {
+    bool changed = false;
+    for (final e in remote) {
+      final index = _expenses.indexWhere((x) => x.id == e.id);
+      if (index != -1) {
+        _expenses[index] = e;
+        changed = true;
+      } else {
+        _expenses.insert(0, e);
+        changed = true;
+      }
+    }
+    if (changed) {
+      _expensesController.add(List.unmodifiable(_expenses));
+      _saveAll();
+    }
+  }
+
+  void mergeRemoteWaterCards(List<WaterCardModel> remote) {
+    bool changed = false;
+    for (final w in remote) {
+      final index = _waterCards.indexWhere((x) => x.id == w.id);
+      if (index != -1) {
+        _waterCards[index] = w;
+        changed = true;
+      } else {
+        _waterCards.add(w);
+        changed = true;
+      }
+    }
+    if (changed) {
+      _waterCardsController.add(List.unmodifiable(_waterCards));
+      _saveAll();
+    }
+  }
+
+  void mergeRemotePoolOverdraftNotes(List<PoolOverdraftNoteModel> remote) {
+    bool changed = false;
+    for (final n in remote) {
+      final index = _poolOverdraftNotes.indexWhere((x) => x.id == n.id);
+      if (index != -1) {
+        _poolOverdraftNotes[index] = n;
+        changed = true;
+      } else {
+        _poolOverdraftNotes.add(n);
+        changed = true;
+      }
+    }
+    if (changed) {
+      _poolOverdraftNotesController.add(List.unmodifiable(_poolOverdraftNotes));
+      _saveAll();
+    }
+  }
+
+  void mergeRemoteCoaches(List<CoachModel> remote) {
+    bool changed = false;
+    for (final c in remote) {
+      final index = _coaches.indexWhere((x) => x.id == c.id);
+      if (index != -1) {
+        _coaches[index] = c;
+        changed = true;
+      } else {
+        _coaches.add(c);
+        changed = true;
+      }
+    }
+    if (changed) {
+      _coachesController.add(List.unmodifiable(_coaches));
+      _saveAll();
+    }
+  }
+
+  void mergeRemoteUsers(List<UserModel> remote) {
+    bool changed = false;
+    for (final u in remote) {
+      final index = _users.indexWhere((x) => x.uid == u.uid);
+      if (index != -1) {
+        _users[index] = u;
+        changed = true;
+      } else {
+        _users.add(u);
+        changed = true;
+      }
+    }
+    if (changed) {
+      _usersController.add(List.unmodifiable(_users));
+      _saveAll();
+    }
+  }
+
   void _initDefaultUsers() {
     _users.clear();
     final now = Timestamp.now();
@@ -745,6 +909,7 @@ class LocalStore {
     _players.insert(0, player);
     _playersController.add(List.unmodifiable(_players));
     _saveAll();
+    CloudSyncService.instance.pushPlayer(player);
     return player;
   }
 
@@ -762,6 +927,7 @@ class LocalStore {
     _players.removeWhere((p) => p.playerCode.trim().toUpperCase() == clean);
     _playersController.add(List.unmodifiable(_players));
     _saveAll();
+    CloudSyncService.instance.deletePlayer(clean);
   }
 
   // --- Groups ---
@@ -771,6 +937,7 @@ class LocalStore {
     _groups.add(group);
     _groupsController.add(List.unmodifiable(_groups));
     _saveAll();
+    CloudSyncService.instance.pushGroup(group);
   }
 
   GroupModel? getGroupByCode(String code) {
@@ -788,6 +955,7 @@ class LocalStore {
       _groups[index] = g.copyWith(currentRegistered: g.currentRegistered + 1);
       _groupsController.add(List.unmodifiable(_groups));
       _saveAll();
+      CloudSyncService.instance.pushGroup(_groups[index]);
     }
   }
 
@@ -799,6 +967,7 @@ class LocalStore {
       _groups[index] = g.copyWith(currentRegistered: newCount);
       _groupsController.add(List.unmodifiable(_groups));
       _saveAll();
+      CloudSyncService.instance.pushGroup(_groups[index]);
     }
   }
 
@@ -808,6 +977,7 @@ class LocalStore {
       _groups[index] = group;
       _groupsController.add(List.unmodifiable(_groups));
       _saveAll();
+      CloudSyncService.instance.pushGroup(group);
     }
   }
 
@@ -815,6 +985,7 @@ class LocalStore {
     _groups.removeWhere((g) => g.groupCode == groupCode);
     _groupsController.add(List.unmodifiable(_groups));
     _saveAll();
+    CloudSyncService.instance.deleteGroup(groupCode);
   }
 
   bool transferPlayerToGroup({
@@ -876,6 +1047,7 @@ class LocalStore {
 
     _subscriptionsController.add(List.unmodifiable(_subscriptions));
     _saveAll();
+    CloudSyncService.instance.pushSubscription(model);
     return model;
   }
 
@@ -901,6 +1073,7 @@ class LocalStore {
       );
       _subscriptionsController.add(List.unmodifiable(_subscriptions));
       _saveAll();
+      CloudSyncService.instance.pushSubscription(_subscriptions[index]);
     }
   }
 
@@ -921,6 +1094,7 @@ class LocalStore {
       );
       _subscriptionsController.add(List.unmodifiable(_subscriptions));
       _saveAll();
+      CloudSyncService.instance.pushSubscription(_subscriptions[index]);
     }
   }
 
@@ -932,6 +1106,7 @@ class LocalStore {
       _subscriptions.removeAt(subIndex);
       _subscriptionsController.add(List.unmodifiable(_subscriptions));
       _saveAll();
+      CloudSyncService.instance.deleteSubscription(id);
     }
   }
 
@@ -975,9 +1150,11 @@ class LocalStore {
         attendedSessions: currentSub.attendedSessions + 1,
       );
       _subscriptionsController.add(List.unmodifiable(_subscriptions));
+      CloudSyncService.instance.pushSubscription(_subscriptions[subIndex]);
     }
     _attendanceController.add(List.unmodifiable(_attendance));
     _saveAll();
+    CloudSyncService.instance.pushAttendance(model);
     return model;
   }
 
@@ -1044,6 +1221,7 @@ class LocalStore {
       ),
     );
     _saveAll();
+    CloudSyncService.instance.pushWaterCard(cardToSave);
   }
 
   // --- Pool Overdraft & Unpaid Sessions Notes (ملاحظات عجز الكروت) ---
@@ -1065,6 +1243,7 @@ class LocalStore {
     _poolOverdraftNotes.add(note);
     _poolOverdraftNotesController.add(List.unmodifiable(_poolOverdraftNotes));
     _saveAll();
+    CloudSyncService.instance.pushPoolOverdraftNote(note);
   }
 
   void deletePoolOverdraftNote(String id) {
@@ -1114,6 +1293,7 @@ class LocalStore {
     _coaches.add(coach);
     _coachesController.add(List.unmodifiable(_coaches));
     _saveAll();
+    CloudSyncService.instance.pushCoach(coach);
   }
 
   void updateCoach(CoachModel coach) {
@@ -1122,6 +1302,7 @@ class LocalStore {
       _coaches[index] = coach;
       _coachesController.add(List.unmodifiable(_coaches));
       _saveAll();
+      CloudSyncService.instance.pushCoach(coach);
     }
   }
 
@@ -1129,6 +1310,7 @@ class LocalStore {
     _coaches.removeWhere((c) => c.coachId == coachId);
     _coachesController.add(List.unmodifiable(_coaches));
     _saveAll();
+    CloudSyncService.instance.deleteCoach(coachId);
   }
 
   void logDailyCoachSession(String coachId, int sessionsCount, String monthYear) {
@@ -1136,18 +1318,19 @@ class LocalStore {
     if (index != -1) {
       final p = _payrolls[index];
       _payrolls[index] = p.copyWith(totalSessions: p.totalSessions + sessionsCount);
+      CloudSyncService.instance.pushPayroll(_payrolls[index]);
     } else {
       final coach = _coaches.firstWhere((c) => c.coachId == coachId, orElse: () => _coaches.first);
-      _payrolls.add(
-        PayrollModel(
-          coachId: coachId,
-          coachName: coach.coachName,
-          totalSessions: sessionsCount,
-          sessionRate: 100.0,
-          payoutDate: Timestamp.now(),
-          monthYear: monthYear,
-        ),
+      final newPayroll = PayrollModel(
+        coachId: coachId,
+        coachName: coach.coachName,
+        totalSessions: sessionsCount,
+        sessionRate: 100.0,
+        payoutDate: Timestamp.now(),
+        monthYear: monthYear,
       );
+      _payrolls.add(newPayroll);
+      CloudSyncService.instance.pushPayroll(newPayroll);
     }
     _saveAll();
   }
@@ -1162,6 +1345,7 @@ class LocalStore {
       _payrolls.add(payroll);
     }
     _saveAll();
+    CloudSyncService.instance.pushPayroll(payroll);
   }
 
   List<PayrollModel> getPayrollForMonth(String monthYear) {
@@ -1182,6 +1366,7 @@ class LocalStore {
     _expenses.insert(0, expense);
     _expensesController.add(List.unmodifiable(_expenses));
     _saveAll();
+    CloudSyncService.instance.pushExpense(expense);
   }
 
   void updateExpense(ExpenseModel expense) {
@@ -1190,6 +1375,7 @@ class LocalStore {
       _expenses[index] = expense;
       _expensesController.add(List.unmodifiable(_expenses));
       _saveAll();
+      CloudSyncService.instance.pushExpense(expense);
     }
   }
 
@@ -1197,6 +1383,7 @@ class LocalStore {
     _expenses.removeWhere((e) => e.id == expenseId);
     _expensesController.add(List.unmodifiable(_expenses));
     _saveAll();
+    CloudSyncService.instance.deleteExpense(expenseId);
   }
 
   GeneralAccountingModel calculateFinancials(String monthYear) {
@@ -1289,6 +1476,7 @@ class LocalStore {
     _users.add(user);
     _usersController.add(List.unmodifiable(_users));
     _saveAll();
+    CloudSyncService.instance.pushUser(user);
   }
 
   void updateUserPassword(String uid, String newPassword) {
@@ -1297,6 +1485,7 @@ class LocalStore {
       _users[index] = _users[index].copyWith(password: newPassword);
       _usersController.add(List.unmodifiable(_users));
       _saveAll();
+      CloudSyncService.instance.pushUser(_users[index]);
     }
   }
 
@@ -1306,6 +1495,7 @@ class LocalStore {
       _users[index] = _users[index].copyWith(isActive: isActive);
       _usersController.add(List.unmodifiable(_users));
       _saveAll();
+      CloudSyncService.instance.pushUser(_users[index]);
     }
   }
 
