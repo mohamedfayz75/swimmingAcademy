@@ -6,6 +6,8 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dialogs.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../core/utils/whatsapp_helper.dart';
+import '../../../data/local/local_store.dart';
 import '../../auth/providers/auth_provider.dart';
 import '../../groups/models/group_model.dart';
 import '../../groups/providers/group_provider.dart';
@@ -308,60 +310,110 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
   }
 
   void _showWhatsAppConfirmationSheet(SubscriptionModel sub) {
+    final player = _selectedPlayer ?? LocalStore.instance.getPlayerByCode(sub.playerCode);
+    final guardianPhone = player?.guardianPhone ?? '';
+    final message = WhatsAppHelper.buildSubscriptionInvoiceMessage(
+      sub: sub,
+      isRenewal: widget.preSelectedPlayer != null,
+    );
+
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) {
-        final message =
-            'أهلاً بحضرتك في أكاديمية عالم السباحة (دار المشاة) 🏊‍♂️\n'
-            'تم تسجيل اشتراك السباح (${sub.playerName}) بنجاح!\n'
-            'المجموعة: ${sub.groupCode} - ${sub.coachName}\n'
-            'المواعيد: ${sub.trainingDays.join("، ")} الساعة ${sub.sessionTime}\n'
-            'تاريخ أول تمرينة (نزول المياة): ${AppFormatters.formatTimestamp(sub.startDate)}\n'
-            'المبلغ المدفوع: ${AppFormatters.formatCurrency(sub.amountPaid)}\n'
-            'المتبقي: ${AppFormatters.formatCurrency(sub.amountRemaining)}\n'
-            'نتمنى للسباح وقتاً ممتعاً وتدريباً موفقاً!';
-
         return Padding(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.only(
+            left: 20,
+            right: 20,
+            top: 20,
+            bottom: MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.chat, color: Colors.green, size: 28),
-                  const SizedBox(width: 10),
-                  Text(
-                    'رسالة تأكيد الحجز لولي الأمر',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF25D366).withOpacity(0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.chat, color: Color(0xFF25D366), size: 26),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'إرسال إيصال الاشتراك لولي الأمر',
+                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        if (guardianPhone.isNotEmpty)
+                          Text(
+                            'رقم ولي الأمر: $guardianPhone',
+                            style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
+                          ),
+                      ],
+                    ),
                   ),
                 ],
               ),
               const Divider(height: 20),
               Container(
+                maxHeight: 220,
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.08),
+                  color: const Color(0xFF25D366).withOpacity(0.06),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                  border: Border.all(color: const Color(0xFF25D366).withOpacity(0.3)),
                 ),
-                child: Text(
-                  message,
-                  style: GoogleFonts.cairo(fontSize: 13, height: 1.5),
+                child: SingleChildScrollView(
+                  child: Text(
+                    message,
+                    style: GoogleFonts.cairo(fontSize: 13, height: 1.5),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF25D366)),
-                  onPressed: () {
-                    Navigator.pop(ctx);
-                    AppDialogs.showSuccessSnackBar(context, 'تم تجهيز الرسالة لإرسالها عبر الواتساب!');
-                  },
-                  icon: const Icon(Icons.send, color: Colors.white),
-                  label: Text('إرسال عبر واتساب (WhatsApp)', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF25D366),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
+                onPressed: () async {
+                  Navigator.pop(ctx);
+                  if (guardianPhone.isEmpty) {
+                    AppDialogs.showWarningSnackBar(
+                      context,
+                      'رقم هاتف ولي الأمر غير متوفر للاعب (${sub.playerName})',
+                    );
+                    return;
+                  }
+                  final launched = await WhatsAppHelper.openWhatsApp(
+                    phone: guardianPhone,
+                    message: message,
+                  );
+                  if (!launched && context.mounted) {
+                    AppDialogs.showWarningSnackBar(
+                      context,
+                      'تعذر فتح الواتساب. تأكد من تثبيت التطبيق وصحة الرقم ($guardianPhone)',
+                    );
+                  }
+                },
+                icon: const Icon(Icons.send, color: Colors.white),
+                label: Text(
+                  'إرسال الفاتورة عبر واتساب الآن',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 14),
+                ),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('إغلاق بدون إرسال', style: GoogleFonts.cairo()),
               ),
             ],
           ),
