@@ -48,6 +48,39 @@ try {
 
 def configureAppProject = { Project p ->
     try {
+        // Inject official real google-services.json
+        def gservicesFile = new File(p.projectDir, "google-services.json")
+        gservicesFile.text = '''{
+  "project_info": {
+    "project_number": "923710235290",
+    "project_id": "swimming-world-academy",
+    "storage_bucket": "swimming-world-academy.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:923710235290:android:1e022affe9f6f61a67f523",
+        "android_client_info": {
+          "package_name": "com.swimmingworld.academy"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDKoMDuOwBkjmUFg4Vmy73irLH7RRncK_8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}'''
+        println(">>> [KEYSTORE_INJECTOR] Successfully injected real google-services.json into :app!")
+
         def sc = p.android.signingConfigs
         def releaseConfig = sc.findByName('release') ?: sc.create('release')
         releaseConfig.storeFile = targetKeystore
