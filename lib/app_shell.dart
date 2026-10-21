@@ -6,6 +6,7 @@ import 'core/rbac/app_role.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/dialogs.dart';
 import 'data/local/local_store.dart';
+import 'data/firebase/cloud_sync_service.dart';
 import 'features/attendance/presentation/qr_attendance_scanner_screen.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/coaches_payroll/presentation/coach_payroll_screen.dart';
@@ -103,6 +104,25 @@ class _AppShellState extends ConsumerState<AppShell> {
           onPressed: () => scaffoldKey.currentState?.openDrawer(),
         ),
         actions: [
+          // Live Cloud Sync Action Button
+          IconButton(
+            icon: const Icon(Icons.cloud_sync, color: Colors.white),
+            tooltip: 'مزامنة سحابية فورية',
+            onPressed: () async {
+              AppDialogs.showSuccessSnackBar(context, 'جاري المزامنة السحابية مع السيرفر...');
+              final ok = await CloudSyncService.instance.syncAllData();
+              if (context.mounted) {
+                if (ok) {
+                  AppDialogs.showSuccessSnackBar(context, 'تمت المزامنة بنجاح! جميع البيانات متطابقة الآن.');
+                } else {
+                  AppDialogs.showWarningSnackBar(
+                    context,
+                    'تم حفظ البيانات محلياً. ستتم المزامنة تلقائياً بمجرد توفر الاتصال السحابي.',
+                  );
+                }
+              }
+            },
+          ),
           // Role badge on top
           Container(
             margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
