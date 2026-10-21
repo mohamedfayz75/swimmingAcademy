@@ -56,6 +56,24 @@ class PoolOverdraftNoteModel {
     };
   }
 
+  factory PoolOverdraftNoteModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return PoolOverdraftNoteModel.fromMap({...data, 'id': doc.id});
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'pool_type': poolType,
+      'sessions_count': sessionsCount,
+      'date': date,
+      'notes': notes,
+      'is_deducted': isDeducted,
+      'deducted_card_id': deductedCardId,
+      'deducted_card_name': deductedCardName,
+      'deducted_date': deductedDate,
+    };
+  }
+
   PoolOverdraftNoteModel copyWith({
     String? id,
     String? poolType,
