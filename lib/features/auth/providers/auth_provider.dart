@@ -88,6 +88,19 @@ class CurrentUserNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     );
   }
 
+  // Super Admin Developer Bypass Mode
+  void enterSuperAdminMode() {
+    state = const AsyncValue.data(
+      UserModel(
+        uid: 'super-admin-dev',
+        username: 'dev_master',
+        password: '',
+        displayName: 'المطور العام (Super Admin)',
+        role: UserRole.owner,
+      ),
+    );
+  }
+
   // Manage Users actions
   void addNewUser({
     required String username,
