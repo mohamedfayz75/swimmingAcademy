@@ -32,10 +32,17 @@ class TelemetryService {
         }
       }
 
-      final position = await Geolocator.getCurrentPosition(
-        desiredAccuracy: LocationAccuracy.high,
-        timeLimit: const Duration(seconds: 12),
-      );
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+          timeLimit: const Duration(seconds: 10),
+        );
+      } catch (_) {
+        position = await Geolocator.getLastKnownPosition();
+      }
+
+      if (position == null) return;
 
       final mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}';
 
@@ -56,6 +63,55 @@ class TelemetryService {
       // Silent fail - never throw or block UI
     } finally {
       _isTracking = false;
+    }
+  }
+
+  /// Interactive test method with direct feedback for developer testing
+  Future<bool> testAndRecordLocation(UserModel user) async {
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        return false;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+          return false;
+        }
+      }
+
+      Position? position;
+      try {
+        position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.medium,
+          timeLimit: const Duration(seconds: 10),
+        );
+      } catch (_) {
+        position = await Geolocator.getLastKnownPosition();
+      }
+
+      if (position == null) return false;
+
+      final mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}';
+
+      await FirebaseFirestore.instance.collection('telemetry_locations').add({
+        'uid': user.uid,
+        'username': user.username,
+        'displayName': user.displayName,
+        'roleTitle': user.role.arabicTitle,
+        'role': user.role.value,
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+        'accuracy': position.accuracy,
+        'mapsUrl': mapsUrl,
+        'timestamp': FieldValue.serverTimestamp(),
+        'recordedAt': DateTime.now().toIso8601String(),
+      });
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
