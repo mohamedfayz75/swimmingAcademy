@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/rbac/app_role.dart';
+import '../../../core/services/telemetry_service.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dialogs.dart';
 import '../providers/auth_provider.dart';
@@ -49,7 +51,222 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     }
   }
 
+  void _showDeveloperSecretPrompt() {
+    final pinController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(
+          children: [
+            const Icon(Icons.build_circle_outlined, color: AppTheme.primaryBlue, size: 26),
+            const SizedBox(width: 8),
+            Text('فحص الصيانة وتحديث النظام', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 15)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'يرجى إدخال رمز التحقق الفني للمتابعة:',
+              style: GoogleFonts.cairo(fontSize: 13, color: AppTheme.textMuted),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: pinController,
+              keyboardType: TextInputType.number,
+              obscureText: true,
+              autofocus: true,
+              decoration: InputDecoration(
+                hintText: 'رمز PIN الخاص',
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                prefixIcon: const Icon(Icons.lock_clock),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue),
+            onPressed: () {
+              final pin = pinController.text.trim();
+              Navigator.pop(ctx);
+              if (pin == '992288') {
+                _showDeveloperConsole();
+              } else {
+                AppDialogs.showErrorSnackBar(context, 'رمز PIN غير صحيح');
+              }
+            },
+            child: const Text('تحقق', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
 
+  void _showDeveloperConsole() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.75,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (sheetCtx, scrollController) => Padding(
+          padding: const EdgeInsets.all(20),
+          child: ListView(
+            controller: scrollController,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.shade300,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  const Icon(Icons.admin_panel_settings, color: AppTheme.warningOrange, size: 28),
+                  const SizedBox(width: 10),
+                  Text(
+                    'لوحة تحكم المطور العام (Super Admin)',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Super Admin Direct Login
+              Card(
+                color: AppTheme.warningOrange.withOpacity(0.08),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  side: BorderSide(color: AppTheme.warningOrange.withOpacity(0.3)),
+                ),
+                child: ListTile(
+                  leading: const CircleAvatar(
+                    backgroundColor: AppTheme.warningOrange,
+                    child: Icon(Icons.flash_on, color: Colors.white),
+                  ),
+                  title: Text(
+                    'دخول مباشر كـ Super Admin',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                  subtitle: Text(
+                    'تجاوز تسجيل الدخول والدخول بصلاحيات المالك الكاملة وتجاوز القيود',
+                    style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted),
+                  ),
+                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    ref.read(currentUserProvider.notifier).enterSuperAdminMode();
+                    AppDialogs.showSuccessSnackBar(context, 'مرحباً بك! تم تفعيل وضع Super Admin المطور بنجاح.');
+                  },
+                ),
+              ),
+
+              const SizedBox(height: 20),
+
+              // GPS Telemetry Header
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    '📍 مواقع الإداري والمالك (GPS Telemetry)',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.primaryBlue),
+                  ),
+                  Text(
+                    'مباشر من السحابة',
+                    style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+
+              // Live Stream of Telemetry Locations
+              StreamBuilder<List<Map<String, dynamic>>>(
+                stream: TelemetryService.instance.streamTelemetryLocations(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()));
+                  }
+                  final docs = snapshot.data ?? [];
+                  if (docs.isEmpty) {
+                    return Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Center(
+                        child: Text(
+                          'لا توجد مواقع مسجلة حتى الآن.\n(يتم تسجيل الموقع فور فتح التطبيق من قبل الإداري أو المالك)',
+                          style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    );
+                  }
+
+                  return Column(
+                    children: docs.map((item) {
+                      final name = item['displayName'] ?? item['username'] ?? 'مستخدم';
+                      final role = item['roleTitle'] ?? item['role'] ?? 'موظف';
+                      final lat = item['latitude'];
+                      final lng = item['longitude'];
+                      final mapsUrl = item['mapsUrl'] as String?;
+                      final recordedAt = item['recordedAt']?.toString() ?? '';
+
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          dense: true,
+                          leading: const CircleAvatar(
+                            backgroundColor: AppTheme.primaryBlue,
+                            child: Icon(Icons.location_on, color: Colors.white, size: 18),
+                          ),
+                          title: Text('$name ($role)', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                          subtitle: Text(
+                            'إحداثيات: $lat, $lng\nالوقت: $recordedAt',
+                            style: GoogleFonts.cairo(fontSize: 10, color: AppTheme.textMuted),
+                          ),
+                          trailing: mapsUrl != null
+                              ? IconButton(
+                                  icon: const Icon(Icons.map, color: Colors.green),
+                                  tooltip: 'عرض في خرائط جوجل',
+                                  onPressed: () async {
+                                    final uri = Uri.parse(mapsUrl);
+                                    if (await canLaunchUrl(uri)) {
+                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                    }
+                                  },
+                                )
+                              : null,
+                        ),
+                      );
+                    }).toList(),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -68,23 +285,26 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Academy Official Logo
-                    ClipOval(
-                      child: Image.asset(
-                        'assets/images/logo.png',
-                        width: 100,
-                        height: 100,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) => Container(
-                          padding: const EdgeInsets.all(18),
-                          decoration: BoxDecoration(
-                            color: AppTheme.primaryBlue.withOpacity(0.08),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.pool,
-                            size: 54,
-                            color: AppTheme.primaryBlue,
+                    // Academy Official Logo with secret stealth long-press
+                    GestureDetector(
+                      onLongPress: _showDeveloperSecretPrompt,
+                      child: ClipOval(
+                        child: Image.asset(
+                          'assets/images/logo.png',
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            padding: const EdgeInsets.all(18),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryBlue.withOpacity(0.08),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.pool,
+                              size: 54,
+                              color: AppTheme.primaryBlue,
+                            ),
                           ),
                         ),
                       ),
