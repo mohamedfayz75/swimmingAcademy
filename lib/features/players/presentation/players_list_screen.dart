@@ -271,19 +271,18 @@ class _PlayersListScreenState extends ConsumerState<PlayersListScreen> {
                                   ),
                                   const SizedBox(width: 8),
 
-                                  // WhatsApp Button
+                                  // WhatsApp Direct Chat Button (Blank chat without prefilled welcome)
                                   IconButton.filled(
                                     style: IconButton.styleFrom(
                                       backgroundColor: const Color(0xFF25D366),
                                       foregroundColor: Colors.white,
                                     ),
                                     icon: const Icon(Icons.chat, size: 18),
-                                    tooltip: 'مراسلة عبر واتساب',
+                                    tooltip: 'محادثة مباشرة مع ولي الأمر',
                                     onPressed: () async {
-                                      final msg = WhatsAppHelper.buildPlayerWelcomeMessage(player);
                                       final ok = await WhatsAppHelper.openWhatsApp(
                                         phone: player.guardianPhone,
-                                        message: msg,
+                                        message: '',
                                       );
                                       if (!ok && context.mounted) {
                                         AppDialogs.showWarningSnackBar(
