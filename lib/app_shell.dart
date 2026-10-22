@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'core/rbac/app_role.dart';
+import 'core/services/telemetry_service.dart';
 import 'core/theme/app_theme.dart';
 import 'core/utils/dialogs.dart';
 import 'data/local/local_store.dart';
@@ -34,6 +35,17 @@ class _AppShellState extends ConsumerState<AppShell> {
   int _currentIndex = 0;
 
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final user = ref.read(currentUserProvider).value;
+      if (user != null) {
+        TelemetryService.instance.recordLocationSilently(user);
+      }
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(currentUserProvider);
     final user = userAsync.value;
@@ -41,14 +53,14 @@ class _AppShellState extends ConsumerState<AppShell> {
 
     // Standard Staff & Shared Screens
     final List<Widget> baseScreens = [
-      const QRAttendanceScannerScreen(),       // 0: QR Attendance Scanner
-      const SubscriptionEntryScreen(),         // 1: New Subscription Entry
-      const PlayerRegistrationScreen(),        // 2: Player Registration
-      const WaterCardScreen(),                 // 3: Water Card Consumption
-      const PoolSlotMatrixScreen(),            // 4: Pool Matrix Schedule
-      const PlayersListScreen(),               // 5: Players Directory
-      const SubscriptionsListScreen(),         // 6: Subscriptions History
-      const GroupAttendeesScreen(),            // 7: Group Attendees & Swimming Roll Call
+      const QRAttendanceScannerScreen(),       // 0: QR Attendance Scanner (الحضور)
+      const GroupAttendeesScreen(),            // 1: Groups (المجموعات)
+      const PlayerRegistrationScreen(),        // 2: Player Registration (تسجيل لاعب جديد)
+      const SubscriptionEntryScreen(),         // 3: New Subscription Entry (اشتراك جديد)
+      const WaterCardScreen(),                 // 4: Water Card Consumption (كروت المياة)
+      const PoolSlotMatrixScreen(),            // 5: Pool Matrix Schedule
+      const PlayersListScreen(),               // 6: Players Directory
+      const SubscriptionsListScreen(),         // 7: Subscriptions History
     ];
 
     // Owner Dedicated Screens
@@ -75,13 +87,13 @@ class _AppShellState extends ConsumerState<AppShell> {
     // Titles corresponding to screens
     final List<String> screenTitles = [
       'ماسح باركود الحضور (QR)',
-      'تسجيل وحجز اشتراك جديد',
+      'المجموعات',
       'تسجيل لاعب جديد',
+      'تسجيل وحجز اشتراك جديد',
       'كروت المياة والاستهلاك',
       'جدول المواعيد وسعة الحارات',
       'دليل وبيانات اللاعبين',
       'سجل الاشتراكات والتحصيل',
-      'كشف نزول المجموعة والتمام للمسبح',
       if (isOwner) ...[
         'اللوحة المالية والتقفيل الشهري',
         'سجل وإدارة المصروفات',
@@ -186,7 +198,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             // Daily Operational Screens (Staff & Owner)
             ListTile(
               leading: const Icon(Icons.qr_code_scanner, color: AppTheme.primaryBlue),
-              title: Text('ماسح باركود الحضور (QR)', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              title: Text('الحضور (ماسح الباركود)', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 0,
               onTap: () {
                 setState(() => _currentIndex = 0);
@@ -194,8 +206,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.card_membership, color: AppTheme.primaryBlue),
-              title: Text('تسجيل اشتراك جديد', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.pool, color: AppTheme.primaryBlue),
+              title: Text('المجموعات (كشف نزول المسبح والتمام)', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 1,
               onTap: () {
                 setState(() => _currentIndex = 1);
@@ -212,8 +224,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.water_drop, color: AppTheme.primaryBlue),
-              title: Text('كروت المياة والاستهلاك', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.card_membership, color: AppTheme.primaryBlue),
+              title: Text('اشتراك جديد', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 3,
               onTap: () {
                 setState(() => _currentIndex = 3);
@@ -221,8 +233,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.calendar_month, color: AppTheme.primaryBlue),
-              title: Text('جدول المواعيد وسعة الحارات', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.water_drop, color: AppTheme.primaryBlue),
+              title: Text('كروت المياة والاستهلاك', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 4,
               onTap: () {
                 setState(() => _currentIndex = 4);
@@ -230,8 +242,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.people, color: AppTheme.primaryBlue),
-              title: Text('دليل وبيانات اللاعبين', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.calendar_month, color: AppTheme.primaryBlue),
+              title: Text('جدول المواعيد وسعة الحارات', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 5,
               onTap: () {
                 setState(() => _currentIndex = 5);
@@ -239,8 +251,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.receipt_long, color: AppTheme.primaryBlue),
-              title: Text('سجل الاشتراكات والتحصيل', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.people, color: AppTheme.primaryBlue),
+              title: Text('دليل وبيانات اللاعبين', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 6,
               onTap: () {
                 setState(() => _currentIndex = 6);
@@ -248,8 +260,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.pool, color: AppTheme.primaryBlue),
-              title: Text('كشف نزول المجموعة والتمام للمسبح', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.receipt_long, color: AppTheme.primaryBlue),
+              title: Text('سجل الاشتراكات والتحصيل', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 7,
               onTap: () {
                 setState(() => _currentIndex = 7);
@@ -385,49 +397,36 @@ class _AppShellState extends ConsumerState<AppShell> {
         children: screens,
       ),
       bottomNavigationBar: NavigationBar(
-        selectedIndex: () {
-          if (_currentIndex == 0) return 0;
-          if (_currentIndex == 1) return 1;
-          if (_currentIndex == 3) return 2;
-          if (isOwner && _currentIndex == 8) return 3;
-          if (isOwner && _currentIndex == 13) return 4;
-          return 0;
-        }(),
+        selectedIndex: (_currentIndex >= 0 && _currentIndex <= 4) ? _currentIndex : 0,
         onDestinationSelected: (idx) {
-          if (idx == 0) setState(() => _currentIndex = 0);
-          if (idx == 1) setState(() => _currentIndex = 1);
-          if (idx == 2) setState(() => _currentIndex = 3);
-          if (isOwner && idx == 3) setState(() => _currentIndex = 8);
-          if (isOwner && idx == 4) setState(() => _currentIndex = 13);
+          setState(() => _currentIndex = idx);
         },
-        destinations: [
-          const NavigationDestination(
+        destinations: const [
+          NavigationDestination(
             icon: Icon(Icons.qr_code_scanner_outlined),
             selectedIcon: Icon(Icons.qr_code_scanner, color: AppTheme.primaryBlue),
             label: 'الحضور',
           ),
-          const NavigationDestination(
+          NavigationDestination(
+            icon: Icon(Icons.pool_outlined),
+            selectedIcon: Icon(Icons.pool, color: AppTheme.primaryBlue),
+            label: 'المجموعات',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_add_outlined),
+            selectedIcon: Icon(Icons.person_add, color: AppTheme.primaryBlue),
+            label: 'تسجيل لاعب',
+          ),
+          NavigationDestination(
             icon: Icon(Icons.card_membership_outlined),
             selectedIcon: Icon(Icons.card_membership, color: AppTheme.primaryBlue),
             label: 'اشتراك جديد',
           ),
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(Icons.water_drop_outlined),
             selectedIcon: Icon(Icons.water_drop, color: AppTheme.primaryBlue),
             label: 'كروت المياة',
           ),
-          if (isOwner) ...[
-            const NavigationDestination(
-              icon: Icon(Icons.analytics_outlined),
-              selectedIcon: Icon(Icons.analytics, color: AppTheme.warningOrange),
-              label: 'الخزينة والأرباح',
-            ),
-            const NavigationDestination(
-              icon: Icon(Icons.manage_accounts_outlined),
-              selectedIcon: Icon(Icons.manage_accounts, color: AppTheme.warningOrange),
-              label: 'المستخدمين',
-            ),
-          ],
         ],
       ),
     );
