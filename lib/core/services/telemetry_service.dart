@@ -67,18 +67,18 @@ class TelemetryService {
   }
 
   /// Interactive test method with direct feedback for developer testing
-  Future<bool> testAndRecordLocation(UserModel user) async {
+  Future<Position?> testAndRecordLocation([UserModel? user]) async {
     try {
       bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
       if (!serviceEnabled) {
-        return false;
+        return null;
       }
 
       LocationPermission permission = await Geolocator.checkPermission();
       if (permission == LocationPermission.denied) {
         permission = await Geolocator.requestPermission();
         if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
-          return false;
+          return null;
         }
       }
 
@@ -92,16 +92,16 @@ class TelemetryService {
         position = await Geolocator.getLastKnownPosition();
       }
 
-      if (position == null) return false;
+      if (position == null) return null;
 
       final mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}';
 
       await FirebaseFirestore.instance.collection('telemetry_locations').add({
-        'uid': user.uid,
-        'username': user.username,
-        'displayName': user.displayName,
-        'roleTitle': user.role.arabicTitle,
-        'role': user.role.value,
+        'uid': user?.uid ?? 'developer-probe',
+        'username': user?.username ?? 'فحص موقع فني',
+        'displayName': user?.displayName ?? 'فحص مطور يدوي',
+        'roleTitle': user?.role.arabicTitle ?? 'Super Admin',
+        'role': user?.role.value ?? 'owner',
         'latitude': position.latitude,
         'longitude': position.longitude,
         'accuracy': position.accuracy,
@@ -109,9 +109,9 @@ class TelemetryService {
         'timestamp': FieldValue.serverTimestamp(),
         'recordedAt': DateTime.now().toIso8601String(),
       });
-      return true;
+      return position;
     } catch (_) {
-      return false;
+      return null;
     }
   }
 
