@@ -130,7 +130,7 @@ class _GroupAttendeesScreenState extends ConsumerState<GroupAttendeesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('كشف نزول المجموعة والتمام للمسبح'),
+        title: const Text('المجموعات (كشف نزول المسبح والتمام)'),
       ),
       body: Column(
         children: [
