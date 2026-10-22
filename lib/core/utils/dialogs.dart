@@ -1,6 +1,12 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:share_plus/share_plus.dart';
 import '../theme/app_theme.dart';
 import '../../features/players/models/player_model.dart';
 import 'formatters.dart';
@@ -75,111 +81,240 @@ class AppDialogs {
 
   // Dialog showing Player ID Card & QR Code
   static void showPlayerCardDialog(BuildContext context, PlayerModel player) {
+    final GlobalKey cardBoundaryKey = GlobalKey();
+    bool isGeneratingImage = false;
+
     showDialog(
       context: context,
-      builder: (ctx) => Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: AppTheme.primaryBlue.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(Icons.pool, size: 40, color: AppTheme.primaryBlue),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'بطاقة عضوية اللاعب',
-                style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
-              ),
-              const SizedBox(height: 16),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 10,
-                      spreadRadius: 2,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => Dialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Renderable Card Boundary for high-res image export
+                RepaintBoundary(
+                  key: cardBoundaryKey,
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF002244), Color(0xFF004488)],
+                        begin: Alignment.topRight,
+                        end: Alignment.bottomLeft,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.2),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-                child: QrImageView(
-                  data: player.playerCode,
-                  version: QrVersions.auto,
-                  size: 180,
-                  gapless: false,
-                  embeddedImageStyle: const QrEmbeddedImageStyle(
-                    size: Size(30, 30),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Card Header
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.pool, color: AppTheme.accentCyan, size: 28),
+                            const SizedBox(width: 8),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'أكاديمية عالم السباحة (دار المشاة)',
+                                  style: GoogleFonts.cairo(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Text(
+                                  'SWIMMING WORLD ACADEMY',
+                                  style: GoogleFonts.cairo(
+                                    color: AppTheme.accentCyan,
+                                    fontSize: 9,
+                                    letterSpacing: 1.2,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 14),
+
+                        // QR Code in white rounded box
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: QrImageView(
+                            data: player.playerCode,
+                            version: QrVersions.auto,
+                            size: 160,
+                            gapless: false,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Swimmer Name & Info
+                        Text(
+                          player.playerName,
+                          style: GoogleFonts.cairo(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'كود العضوية: ${player.playerCode}',
+                          style: GoogleFonts.cairo(
+                            color: AppTheme.accentCyan,
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            'الفرع: ${player.branch} | ${player.customerType}',
+                            style: GoogleFonts.cairo(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'بطاقة الحضور والباركود الرقمي المعتمد',
+                          style: GoogleFonts.cairo(
+                            color: Colors.white70,
+                            fontSize: 9,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                player.playerName,
-                style: GoogleFonts.cairo(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              Text(
-                'كود اللاعب: ${player.playerCode}',
-                style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.primaryLight),
-              ),
-              const SizedBox(height: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: AppTheme.accentCyan.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  'الفرع: ${player.branch} | ${player.customerType}',
-                  style: GoogleFonts.cairo(fontSize: 13, color: AppTheme.primaryBlue, fontWeight: FontWeight.bold),
-                ),
-              ),
-              const SizedBox(height: 20),
-              // WhatsApp Share Button
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
+
+                const SizedBox(height: 18),
+
+                // Button 1: Share Image via WhatsApp
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    icon: isGeneratingImage
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Icon(Icons.share, size: 20),
+                    label: Text(
+                      isGeneratingImage ? 'جاري تجهيز صورة الكارت...' : '📸 مشاركة كارت الباركود كصورة (واتساب)',
+                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    onPressed: isGeneratingImage
+                        ? null
+                        : () async {
+                            setDialogState(() => isGeneratingImage = true);
+                            try {
+                              final boundary = cardBoundaryKey.currentContext?.findRenderObject() as RenderRepaintBoundary?;
+                              if (boundary == null) {
+                                throw Exception('تعذر التقاط صورة الكارت');
+                              }
+                              final image = await boundary.toImage(pixelRatio: 3.0);
+                              final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
+                              if (byteData == null) {
+                                throw Exception('فشل تحويل الصورة');
+                              }
+                              final pngBytes = byteData.buffer.asUint8List();
+                              final tempDir = await getTemporaryDirectory();
+                              final filePath = '${tempDir.path}/card_${player.playerCode}.png';
+                              final file = File(filePath);
+                              await file.writeAsBytes(pngBytes);
+
+                              final welcomeText = WhatsAppHelper.buildPlayerWelcomeMessage(player);
+                              await Share.shareXFiles(
+                                [XFile(file.path)],
+                                text: welcomeText,
+                              );
+                            } catch (e) {
+                              if (context.mounted) {
+                                AppDialogs.showErrorSnackBar(context, 'تعذر مشاركة الصورة: $e');
+                              }
+                            } finally {
+                              setDialogState(() => isGeneratingImage = false);
+                            }
+                          },
                   ),
-                  onPressed: () async {
-                    final msg = WhatsAppHelper.buildPlayerWelcomeMessage(player);
-                    final success = await WhatsAppHelper.openWhatsApp(
-                      phone: player.guardianPhone,
-                      message: msg,
-                    );
-                    if (!success && context.mounted) {
-                      AppDialogs.showWarningSnackBar(
-                        context,
-                        'تعذر فتح الواتساب. يرجى التأكد من تثبيت التطبيق وصحة رقم ولي الأمر (${player.guardianPhone})',
+                ),
+
+                const SizedBox(height: 8),
+
+                // Button 2: Direct Text Message on WhatsApp
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF128C7E),
+                      side: const BorderSide(color: Color(0xFF128C7E)),
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                    ),
+                    icon: const Icon(Icons.chat_outlined, size: 18),
+                    label: Text(
+                      '💬 إرسال رسالة ترحيبية نصية فقط',
+                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12),
+                    ),
+                    onPressed: () async {
+                      final msg = WhatsAppHelper.buildPlayerWelcomeMessage(player);
+                      final success = await WhatsAppHelper.openWhatsApp(
+                        phone: player.guardianPhone,
+                        message: msg,
                       );
-                    }
-                  },
-                  icon: const Icon(Icons.chat, color: Colors.white),
-                  label: Text(
-                    'إرسال كود العضوية والترحيب عبر واتساب',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13),
+                      if (!success && context.mounted) {
+                        AppDialogs.showWarningSnackBar(
+                          context,
+                          'تعذر فتح الواتساب. تأكد من صحة رقم ولي الأمر (${player.guardianPhone})',
+                        );
+                      }
+                    },
                   ),
                 ),
-              ),
-              const SizedBox(height: 10),
-              SizedBox(
-                width: double.infinity,
-                child: OutlinedButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: const Text('إغلاق'),
+
+                const SizedBox(height: 8),
+
+                // Close Button
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text('إغلاق', style: GoogleFonts.cairo(color: AppTheme.textMuted)),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
