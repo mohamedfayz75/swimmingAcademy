@@ -100,11 +100,6 @@ class OwnerDashboardScreen extends ConsumerWidget {
             },
           ),
           IconButton(
-            icon: const Icon(Icons.cleaning_services_rounded, color: Colors.amberAccent),
-            tooltip: 'تصفير البيانات التجريبية والبدء على نظافة',
-            onPressed: () => _showResetDataDialog(context, ref),
-          ),
-          IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'تحديث الحسابات',
             onPressed: () {
