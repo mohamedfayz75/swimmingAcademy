@@ -6,6 +6,9 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dialogs.dart';
 import '../../../core/utils/formatters.dart';
+import '../../../data/local/local_store.dart';
+import '../../subscriptions/presentation/subscription_entry_screen.dart';
+import '../models/player_model.dart';
 import '../providers/player_provider.dart';
 
 class PlayerRegistrationScreen extends ConsumerStatefulWidget {
@@ -48,9 +51,85 @@ class _PlayerRegistrationScreenState extends ConsumerState<PlayerRegistrationScr
     }
   }
 
-  Future<void> _submitForm() async {
+  Future<void> _checkAndSubmit() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final inputName = _nameController.text.trim();
+    final inputPhone = _phoneController.text.trim();
+
+    final allPlayers = LocalStore.instance.getPlayers();
+    PlayerModel? matchingPlayer;
+    for (final p in allPlayers) {
+      if (p.playerName.trim().toLowerCase() == inputName.toLowerCase() ||
+          (inputPhone.isNotEmpty && p.guardianPhone.trim() == inputPhone)) {
+        matchingPlayer = p;
+        break;
+      }
+    }
+
+    if (matchingPlayer != null) {
+      final isNameMatch = matchingPlayer.playerName.trim().toLowerCase() == inputName.toLowerCase();
+      final matchReason = isNameMatch
+          ? 'تطابق في اسم السباح: «${matchingPlayer.playerName}»'
+          : 'تطابق في رقم هاتف ولي الأمر: «${matchingPlayer.guardianPhone}» (${matchingPlayer.playerName})';
+
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: AppTheme.warningOrange, size: 28),
+              const SizedBox(width: 8),
+              Text('تنبيه: اللاعب مسجل مسبقاً!', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'يوجد لاعب مسجل بالفعل بنفس البيانات في الأكاديمية:\n$matchReason\nكود اللاعب: (${matchingPlayer!.playerCode})\nالفرع: ${matchingPlayer.branch}',
+                style: GoogleFonts.cairo(fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '💡 لتجنب تكرار اللاعبين والارتباك في كشف الحضور، يُفضل الانتقال لتسجيل اشتراك السباح بدلاً من تكرار تسجيله.',
+                style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue),
+              onPressed: () {
+                Navigator.pop(ctx, false);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const SubscriptionEntryScreen()),
+                );
+              },
+              child: const Text('الانتقال لتسجيل اشتراك', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              child: Text('متابعة كلاعب جديد (تكرار)', style: GoogleFonts.cairo(color: AppTheme.errorRed, fontSize: 11)),
+            ),
+          ],
+        ),
+      );
+
+      if (proceed != true) return;
+    }
+
+    await _executeRegistration();
+  }
+
+  Future<void> _executeRegistration() async {
     try {
       final player = await ref.read(playerRegistrationProvider.notifier).register(
             playerName: _nameController.text,
@@ -295,7 +374,7 @@ class _PlayerRegistrationScreenState extends ConsumerState<PlayerRegistrationScr
 
               // Submit Button
               ElevatedButton.icon(
-                onPressed: isLoading ? null : _submitForm,
+                onPressed: isLoading ? null : _checkAndSubmit,
                 icon: isLoading
                     ? const SizedBox(
                         width: 20,
