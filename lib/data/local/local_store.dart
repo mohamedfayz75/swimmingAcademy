@@ -269,6 +269,13 @@ class LocalStore {
           }
         }
 
+        // Deduplicate any duplicate usernames loaded from storage
+        final Map<String, UserModel> uniqueUsers = {};
+        for (final u in _users) {
+          uniqueUsers[u.username.trim().toLowerCase()] = u;
+        }
+        _users = uniqueUsers.values.toList();
+
         // Fallback: If for any reason users list is empty, ensure default admin/owner accounts exist
         if (_users.isEmpty) {
           _initDefaultUsers();
@@ -587,7 +594,9 @@ class LocalStore {
   void mergeRemoteUsers(List<UserModel> remote) {
     bool changed = false;
     for (final u in remote) {
-      final index = _users.indexWhere((x) => x.uid == u.uid);
+      final index = _users.indexWhere((x) =>
+          x.uid == u.uid ||
+          x.username.trim().toLowerCase() == u.username.trim().toLowerCase());
       if (index != -1) {
         _users[index] = u;
         changed = true;
@@ -596,6 +605,18 @@ class LocalStore {
         changed = true;
       }
     }
+
+    // Final deduplication pass on _users by username
+    final Map<String, UserModel> map = {};
+    for (final u in _users) {
+      map[u.username.trim().toLowerCase()] = u;
+    }
+    if (map.length != _users.length) {
+      _users.clear();
+      _users.addAll(map.values);
+      changed = true;
+    }
+
     if (changed) {
       _usersController.add(List.unmodifiable(_users));
       _saveAll();
@@ -1024,9 +1045,19 @@ class LocalStore {
 
   List<SubscriptionModel> getActiveSubscriptionsForGroup(String groupCode) {
     final clean = groupCode.trim().toUpperCase();
-    return _subscriptions
+    final matching = _subscriptions
         .where((s) => s.groupCode.trim().toUpperCase() == clean && !s.isExpired)
         .toList();
+
+    // Deduplicate by playerCode - each swimmer appears once with their latest active subscription
+    final Map<String, SubscriptionModel> unique = {};
+    for (final s in matching) {
+      final code = s.playerCode.trim().toUpperCase();
+      if (!unique.containsKey(code)) {
+        unique[code] = s;
+      }
+    }
+    return unique.values.toList();
   }
 
   // --- Subscriptions ---
@@ -1037,12 +1068,29 @@ class LocalStore {
     final model = sub.copyWith(id: newId);
     _subscriptions.insert(0, model);
 
-    // Increment seat in primary group
-    incrementGroupRegistered(sub.groupCode);
+    // Check if player is already registered in this primary group (renewal)
+    final bool alreadyInPrimary = _subscriptions.any((s) =>
+        s.id != model.id &&
+        s.playerCode.trim().toUpperCase() == sub.playerCode.trim().toUpperCase() &&
+        s.groupCode.trim().toUpperCase() == sub.groupCode.trim().toUpperCase() &&
+        !s.isExpired);
 
-    // If custom split schedule, increment secondary group as well!
+    if (!alreadyInPrimary) {
+      // Increment seat in primary group only if not already occupying a seat
+      incrementGroupRegistered(sub.groupCode);
+    }
+
+    // If custom split schedule, check secondary group as well
     if (sub.secondaryGroupCode != null && sub.secondaryGroupCode!.isNotEmpty) {
-      incrementGroupRegistered(sub.secondaryGroupCode!);
+      final bool alreadyInSecondary = _subscriptions.any((s) =>
+          s.id != model.id &&
+          s.playerCode.trim().toUpperCase() == sub.playerCode.trim().toUpperCase() &&
+          s.secondaryGroupCode != null &&
+          s.secondaryGroupCode!.trim().toUpperCase() == sub.secondaryGroupCode!.trim().toUpperCase() &&
+          !s.isExpired);
+      if (!alreadyInSecondary) {
+        incrementGroupRegistered(sub.secondaryGroupCode!);
+      }
     }
 
     _subscriptionsController.add(List.unmodifiable(_subscriptions));
@@ -1501,9 +1549,20 @@ class LocalStore {
     }
   }
 
+  void updateUser(UserModel user) {
+    final index = _users.indexWhere((u) => u.uid == user.uid);
+    if (index != -1) {
+      _users[index] = user;
+      _usersController.add(List.unmodifiable(_users));
+      _saveAll();
+      CloudSyncService.instance.pushUser(user);
+    }
+  }
+
   void deleteUser(String uid) {
     _users.removeWhere((u) => u.uid == uid);
     _usersController.add(List.unmodifiable(_users));
     _saveAll();
+    CloudSyncService.instance.deleteUser(uid);
   }
 }
