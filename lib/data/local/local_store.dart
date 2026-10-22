@@ -274,7 +274,8 @@ class LocalStore {
         for (final u in _users) {
           uniqueUsers[u.username.trim().toLowerCase()] = u;
         }
-        _users = uniqueUsers.values.toList();
+        _users.clear();
+        _users.addAll(uniqueUsers.values);
 
         // Fallback: If for any reason users list is empty, ensure default admin/owner accounts exist
         if (_users.isEmpty) {
