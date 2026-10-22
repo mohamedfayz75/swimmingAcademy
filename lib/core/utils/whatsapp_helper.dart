@@ -50,7 +50,9 @@ class WhatsAppHelper {
     final encodedText = Uri.encodeComponent(message);
 
     // 1. Primary method: WhatsApp Universal wa.me link
-    final waMeUri = Uri.parse('https://wa.me/$cleanPhone?text=$encodedText');
+    final waMeUri = message.trim().isEmpty
+        ? Uri.parse('https://wa.me/$cleanPhone')
+        : Uri.parse('https://wa.me/$cleanPhone?text=$encodedText');
 
     try {
       final launched = await launchUrl(
@@ -61,7 +63,9 @@ class WhatsAppHelper {
     } catch (_) {}
 
     // 2. Fallback: Native whatsapp:// URI scheme
-    final nativeUri = Uri.parse('whatsapp://send?phone=$cleanPhone&text=$encodedText');
+    final nativeUri = message.trim().isEmpty
+        ? Uri.parse('whatsapp://send?phone=$cleanPhone')
+        : Uri.parse('whatsapp://send?phone=$cleanPhone&text=$encodedText');
     try {
       final launchedNative = await launchUrl(
         nativeUri,
@@ -71,7 +75,9 @@ class WhatsAppHelper {
     } catch (_) {}
 
     // 3. Fallback: api.whatsapp.com
-    final apiUri = Uri.parse('https://api.whatsapp.com/send?phone=$cleanPhone&text=$encodedText');
+    final apiUri = message.trim().isEmpty
+        ? Uri.parse('https://api.whatsapp.com/send?phone=$cleanPhone')
+        : Uri.parse('https://api.whatsapp.com/send?phone=$cleanPhone&text=$encodedText');
     try {
       return await launchUrl(apiUri, mode: LaunchMode.externalApplication);
     } catch (_) {
