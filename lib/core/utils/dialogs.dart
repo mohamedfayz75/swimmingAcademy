@@ -215,7 +215,7 @@ class AppDialogs {
 
                 const SizedBox(height: 18),
 
-                // Button 1: Share Image via WhatsApp
+                // Button 1: Direct Message to Guardian Chat (Fastest & direct to phone)
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
@@ -224,16 +224,48 @@ class AppDialogs {
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),
+                    icon: const Icon(Icons.chat, size: 20),
+                    label: Text(
+                      '💬 إرسال رسالة الترحيب والبيانات (يفتح شات الرقم فوراً)',
+                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                    onPressed: () async {
+                      final msg = WhatsAppHelper.buildPlayerWelcomeMessage(player);
+                      final success = await WhatsAppHelper.openWhatsApp(
+                        phone: player.guardianPhone,
+                        message: msg,
+                      );
+                      if (!success && context.mounted) {
+                        AppDialogs.showWarningSnackBar(
+                          context,
+                          'تعذر فتح الواتساب. تأكد من صحة رقم ولي الأمر (${player.guardianPhone})',
+                        );
+                      }
+                    },
+                  ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Button 2: Share Image via WhatsApp / Gallery
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppTheme.primaryBlue,
+                      side: const BorderSide(color: AppTheme.primaryBlue),
+                      padding: const EdgeInsets.symmetric(vertical: 11),
+                    ),
                     icon: isGeneratingImage
                         ? const SizedBox(
                             width: 18,
                             height: 18,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(color: AppTheme.primaryBlue, strokeWidth: 2),
                           )
-                        : const Icon(Icons.share, size: 20),
+                        : const Icon(Icons.share, size: 18),
                     label: Text(
-                      isGeneratingImage ? 'جاري تجهيز صورة الكارت...' : '📸 مشاركة كارت الباركود كصورة (واتساب)',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                      isGeneratingImage ? 'جاري تجهيز صورة الكارت...' : '📸 مشاركة كارت الباركود كصورة (PNG)',
+                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12),
                     ),
                     onPressed: isGeneratingImage
                         ? null
@@ -268,38 +300,6 @@ class AppDialogs {
                               setDialogState(() => isGeneratingImage = false);
                             }
                           },
-                  ),
-                ),
-
-                const SizedBox(height: 8),
-
-                // Button 2: Direct Text Message on WhatsApp
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF128C7E),
-                      side: const BorderSide(color: Color(0xFF128C7E)),
-                      padding: const EdgeInsets.symmetric(vertical: 11),
-                    ),
-                    icon: const Icon(Icons.chat_outlined, size: 18),
-                    label: Text(
-                      '💬 إرسال رسالة ترحيبية نصية فقط',
-                      style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12),
-                    ),
-                    onPressed: () async {
-                      final msg = WhatsAppHelper.buildPlayerWelcomeMessage(player);
-                      final success = await WhatsAppHelper.openWhatsApp(
-                        phone: player.guardianPhone,
-                        message: msg,
-                      );
-                      if (!success && context.mounted) {
-                        AppDialogs.showWarningSnackBar(
-                          context,
-                          'تعذر فتح الواتساب. تأكد من صحة رقم ولي الأمر (${player.guardianPhone})',
-                        );
-                      }
-                    },
                   ),
                 ),
 
