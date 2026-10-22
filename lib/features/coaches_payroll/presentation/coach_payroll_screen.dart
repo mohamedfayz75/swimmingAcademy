@@ -227,6 +227,17 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
     );
   }
 
+  void _changeMonth(int delta) {
+    final currentStr = ref.read(selectedMonthYearProvider);
+    final parts = currentStr.split('-');
+    int month = int.tryParse(parts[0]) ?? DateTime.now().month;
+    int year = int.tryParse(parts[1]) ?? DateTime.now().year;
+
+    DateTime d = DateTime(year, month + delta);
+    final newMonthStr = '${d.month.toString().padLeft(2, '0')}-${d.year}';
+    ref.read(selectedMonthYearProvider.notifier).state = newMonthStr;
+  }
+
   @override
   Widget build(BuildContext context) {
     final monthYear = ref.watch(selectedMonthYearProvider);
@@ -239,22 +250,65 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
       ),
       body: Column(
         children: [
-          // Month banner
+          // Month banner with switcher
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             color: AppTheme.primaryBlue,
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'جدول مسيرات شهر: $monthYear',
-                  style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
-                ),
                 IconButton(
-                  icon: const Icon(Icons.refresh, color: Colors.white),
-                  onPressed: () {
-                    ref.invalidate(monthlyPayrollStreamProvider(monthYear));
+                  icon: const Icon(Icons.chevron_left, color: Colors.white, size: 28),
+                  tooltip: 'الشهر السابق',
+                  onPressed: () => _changeMonth(-1),
+                ),
+                InkWell(
+                  onTap: () async {
+                    final parts = monthYear.split('-');
+                    int currentMonth = int.tryParse(parts[0]) ?? DateTime.now().month;
+                    int currentYear = int.tryParse(parts[1]) ?? DateTime.now().year;
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: DateTime(currentYear, currentMonth),
+                      firstDate: DateTime(2023),
+                      lastDate: DateTime(2035),
+                      locale: const Locale('ar'),
+                      helpText: 'اختر شهر المسيرات',
+                    );
+                    if (picked != null) {
+                      final newMonthStr = '${picked.month.toString().padLeft(2, '0')}-${picked.year}';
+                      ref.read(selectedMonthYearProvider.notifier).state = newMonthStr;
+                    }
                   },
+                  child: Row(
+                    children: [
+                      const Icon(Icons.calendar_month, color: AppTheme.accentCyan, size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'مسيرات شهر: $monthYear',
+                        style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(Icons.arrow_drop_down, color: Colors.white70),
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.chevron_right, color: Colors.white, size: 28),
+                      tooltip: 'الشهر التالي',
+                      onPressed: () => _changeMonth(1),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, color: Colors.white),
+                      tooltip: 'تحديث',
+                      onPressed: () {
+                        ref.invalidate(monthlyPayrollStreamProvider(monthYear));
+                      },
+                    ),
+                  ],
                 ),
               ],
             ),
