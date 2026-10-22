@@ -392,6 +392,14 @@ class CloudSyncService {
     }
   }
 
+  Future<void> deleteUser(String uid) async {
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(uid).delete();
+    } catch (e) {
+      debugPrint('CloudSync deleteUser error: $e');
+    }
+  }
+
   /// Full bi-directional sync on demand: Uploads all local records to Firestore
   /// and pulls down any remote data that is missing locally.
   Future<bool> syncAllData() async {
