@@ -1,7 +1,7 @@
 name: swimming_academy
 description: "Swimming World Academy Management System - Cross-platform Flutter Application"
 publish_to: 'none'
-version: 1.0.14+14
+version: 1.0.15+15
 
 environment:
   sdk: '>=3.0.0 <4.0.0'
@@ -23,6 +23,13 @@ dependencies:
   # QR Code Scanning & Generation
   mobile_scanner: ^5.2.3
   qr_flutter: ^4.1.0
+
+  # Sharing & File Providers
+  share_plus: ^10.1.2
+  path_provider: ^2.1.4
+
+  # Geolocation & Telemetry
+  geolocator: ^13.0.2
 
   # Utilities & Formatting
   intl: any
