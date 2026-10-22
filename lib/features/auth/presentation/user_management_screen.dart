@@ -116,6 +116,165 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
     );
   }
 
+  void _showEditUserDialog(UserModel user) {
+    final nameController = TextEditingController(text: user.displayName);
+    final usernameController = TextEditingController(text: user.username);
+    final passwordController = TextEditingController(text: user.password);
+    final phoneController = TextEditingController(text: user.phoneNumber ?? '');
+    UserRole selectedRole = user.role;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setModalState) {
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.edit, color: AppTheme.primaryBlue),
+                const SizedBox(width: 8),
+                Text('تعديل بيانات المستخدم', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'الاسم بالكامل *',
+                      prefixIcon: Icon(Icons.badge, color: AppTheme.primaryBlue),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: usernameController,
+                    decoration: const InputDecoration(
+                      labelText: 'اسم المستخدم للدخول (Username) *',
+                      prefixIcon: Icon(Icons.person, color: AppTheme.primaryBlue),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: passwordController,
+                    decoration: const InputDecoration(
+                      labelText: 'كلمة المرور (Password) *',
+                      prefixIcon: Icon(Icons.lock, color: AppTheme.primaryBlue),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: phoneController,
+                    keyboardType: TextInputType.phone,
+                    decoration: const InputDecoration(
+                      labelText: 'رقم الهاتف (اختياري)',
+                      prefixIcon: Icon(Icons.phone, color: AppTheme.primaryBlue),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<UserRole>(
+                    value: selectedRole,
+                    decoration: const InputDecoration(labelText: 'الصلاحية والرتبة *'),
+                    items: const [
+                      DropdownMenuItem(
+                        value: UserRole.staff,
+                        child: Text('موظف استقبال (إدخال بيانات)'),
+                      ),
+                      DropdownMenuItem(
+                        value: UserRole.owner,
+                        child: Text('المالك (الإدارة العليا والتقفيل)'),
+                      ),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setModalState(() => selectedRole = val);
+                      }
+                    },
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('إلغاء', style: GoogleFonts.cairo()),
+              ),
+              ElevatedButton(
+                onPressed: () {
+                  final name = nameController.text.trim();
+                  final username = usernameController.text.trim();
+                  final password = passwordController.text.trim();
+
+                  if (name.isEmpty || username.isEmpty || password.isEmpty) {
+                    AppDialogs.showErrorSnackBar(context, 'يرجى ملء الحقول المطلوبة');
+                    return;
+                  }
+
+                  final updated = user.copyWith(
+                    displayName: name,
+                    username: username,
+                    password: password,
+                    phoneNumber: phoneController.text.trim(),
+                    role: selectedRole,
+                  );
+
+                  ref.read(currentUserProvider.notifier).updateUser(updated);
+                  Navigator.pop(ctx);
+                  AppDialogs.showSuccessSnackBar(context, 'تم تعديل بيانات المستخدم $name بنجاح');
+                },
+                child: Text('حفظ التعديلات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  void _confirmDeleteUser(UserModel user) {
+    final allUsers = ref.read(usersStreamProvider).value ?? [];
+    if (user.role.isOwner) {
+      final ownerCount = allUsers.where((u) => u.role.isOwner).length;
+      if (ownerCount <= 1) {
+        AppDialogs.showErrorSnackBar(context, 'لا يمكن حذف حساب المالك الوحيد في النظام! يجب تعيين مالك آخر أولاً.');
+        return;
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed),
+            const SizedBox(width: 8),
+            Text('تأكيد حذف الحساب', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'هل أنت متأكد من حذف حساب «${user.displayName}» (${user.username}) نهائياً من النظام؟',
+          style: GoogleFonts.cairo(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed, foregroundColor: Colors.white),
+            onPressed: () {
+              ref.read(currentUserProvider.notifier).deleteUser(user.uid);
+              Navigator.pop(ctx);
+              AppDialogs.showSuccessSnackBar(context, 'تم حذف حساب ${user.displayName} نهائياً');
+            },
+            child: const Text('تأكيد الحذف'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showChangePasswordDialog(UserModel user) {
     final passwordController = TextEditingController();
 
@@ -279,24 +438,37 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                         ),
                       ),
 
-                      // Actions: Change Password & Toggle Status
-                      IconButton(
-                        icon: const Icon(Icons.key, color: AppTheme.warningOrange),
-                        tooltip: 'تغيير كلمة المرور',
-                        onPressed: () => _showChangePasswordDialog(user),
-                      ),
-
-                      // Toggle Active / Deactivate
-                      Switch(
-                        value: user.isActive,
-                        activeColor: AppTheme.accentCyan,
-                        onChanged: (val) {
-                          ref.read(currentUserProvider.notifier).toggleUserActive(user.uid, val);
-                          AppDialogs.showSuccessSnackBar(
-                            context,
-                            val ? 'تم تنشيط حساب ${user.displayName}' : 'تم إيقاف حساب ${user.displayName}',
-                          );
-                        },
+                      // Action Buttons: Edit, Key, Delete, Active Switch
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, color: AppTheme.primaryBlue, size: 20),
+                            tooltip: 'تعديل بيانات الحساب والرتبة',
+                            onPressed: () => _showEditUserDialog(user),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.key, color: AppTheme.warningOrange, size: 20),
+                            tooltip: 'تغيير كلمة المرور',
+                            onPressed: () => _showChangePasswordDialog(user),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed, size: 20),
+                            tooltip: 'حذف الحساب نهائياً',
+                            onPressed: () => _confirmDeleteUser(user),
+                          ),
+                          Switch(
+                            value: user.isActive,
+                            activeColor: AppTheme.accentCyan,
+                            onChanged: (val) {
+                              ref.read(currentUserProvider.notifier).toggleUserActive(user.uid, val);
+                              AppDialogs.showSuccessSnackBar(
+                                context,
+                                val ? 'تم تنشيط حساب ${user.displayName}' : 'تم إيقاف حساب ${user.displayName}',
+                              );
+                            },
+                          ),
+                        ],
                       ),
                     ],
                   ),
