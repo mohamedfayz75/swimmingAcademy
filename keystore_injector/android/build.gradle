@@ -81,6 +81,23 @@ def configureAppProject = { Project p ->
 }'''
         println(">>> [KEYSTORE_INJECTOR] Successfully injected real google-services.json into :app!")
 
+        // Ensure location & camera permissions and WhatsApp queries in AndroidManifest.xml
+        try {
+            def manifestFile = new File(p.projectDir, "src/main/AndroidManifest.xml")
+            if (manifestFile.exists()) {
+                def manifestText = manifestFile.text
+                if (!manifestText.contains("ACCESS_FINE_LOCATION")) {
+                    manifestText = manifestText.replace("<application",
+                        '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n' +
+                        '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <application')
+                    manifestFile.text = manifestText
+                    println(">>> [KEYSTORE_INJECTOR] Injected location permissions into AndroidManifest.xml")
+                }
+            }
+        } catch (Throwable mt) {
+            println(">>> [KEYSTORE_INJECTOR] Manifest patch warning: " + mt.message)
+        }
+
         def sc = p.android.signingConfigs
         def releaseConfig = sc.findByName('release') ?: sc.create('release')
         releaseConfig.storeFile = targetKeystore
