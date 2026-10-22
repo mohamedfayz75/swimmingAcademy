@@ -132,6 +132,10 @@ class CurrentUserNotifier extends StateNotifier<AsyncValue<UserModel?>> {
   void deleteUser(String uid) {
     _store.deleteUser(uid);
   }
+
+  void updateUser(UserModel user) {
+    _store.updateUser(user);
+  }
 }
 
 final currentUserProvider = StateNotifierProvider<CurrentUserNotifier, AsyncValue<UserModel?>>((ref) {
