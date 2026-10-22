@@ -24,7 +24,7 @@ class SubscriptionsListScreen extends ConsumerStatefulWidget {
 }
 
 class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScreen> {
-  String? _filter; // null = all, 'paid', 'remaining', 'deposit'
+  String _filter = 'active'; // 'active', 'all', 'paid', 'remaining', 'expired', 'deposit'
 
   void _confirmDeleteSubscription(SubscriptionModel sub) {
     showDialog(
@@ -245,9 +245,16 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
               child: Row(
                 children: [
                   ChoiceChip(
+                    label: Text('النشطة حالياً (لها حصص)', style: GoogleFonts.cairo(fontSize: 12)),
+                    selected: _filter == 'active',
+                    selectedColor: AppTheme.primaryBlue.withOpacity(0.2),
+                    onSelected: (_) => setState(() => _filter = 'active'),
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
                     label: Text('الكل', style: GoogleFonts.cairo(fontSize: 12)),
-                    selected: _filter == null,
-                    onSelected: (_) => setState(() => _filter = null),
+                    selected: _filter == 'all',
+                    onSelected: (_) => setState(() => _filter = 'all'),
                   ),
                   const SizedBox(width: 8),
                   ChoiceChip(
@@ -262,6 +269,13 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                     selected: _filter == 'remaining',
                     selectedColor: AppTheme.warningOrange.withOpacity(0.2),
                     onSelected: (_) => setState(() => _filter = 'remaining'),
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    label: Text('منتهي / سابق', style: GoogleFonts.cairo(fontSize: 12)),
+                    selected: _filter == 'expired',
+                    selectedColor: AppTheme.errorRed.withOpacity(0.2),
+                    onSelected: (_) => setState(() => _filter = 'expired'),
                   ),
                   const SizedBox(width: 8),
                   ChoiceChip(
@@ -281,10 +295,14 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
             child: subscriptionsAsync.when(
               data: (subs) {
                 var filtered = subs;
-                if (_filter == 'paid') {
+                if (_filter == 'active') {
+                  filtered = filtered.where((s) => !s.isExpired).toList();
+                } else if (_filter == 'paid') {
                   filtered = filtered.where((s) => s.isFullyPaid && !s.isDepositOnly).toList();
                 } else if (_filter == 'remaining') {
                   filtered = filtered.where((s) => !s.isFullyPaid).toList();
+                } else if (_filter == 'expired') {
+                  filtered = filtered.where((s) => s.isExpired).toList();
                 } else if (_filter == 'deposit') {
                   filtered = filtered.where((s) => s.isDepositOnly).toList();
                 }
