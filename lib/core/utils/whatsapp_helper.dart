@@ -85,8 +85,8 @@ class WhatsAppHelper {
     bool isRenewal = false,
   }) {
     final title = isRenewal
-        ? '🔄 *إشعار تجديد اشتراك بنجاح*'
-        : '📋 *إيصال تأكيد اشتراك سباحة*';
+        ? '🔄 *إشعار تجديد اشتراك رسمي*'
+        : '📋 *إيصال تأكيد اشتراك وتسجيل*';
 
     final days = sub.trainingDays.isNotEmpty
         ? sub.trainingDays.join('، ')
@@ -95,24 +95,49 @@ class WhatsAppHelper {
     final time = sub.sessionTime.isNotEmpty ? 'الساعة ${sub.sessionTime}' : '';
     final startDateFormatted = AppFormatters.formatTimestamp(sub.startDate);
 
+    final subFee = sub.amountRequired;
+    final stampFee = sub.stampCardFee;
+    final totalDue = sub.totalDue;
+    final paid = sub.amountPaid;
+    final remaining = sub.amountRemaining;
+
+    final String feeBreakdown;
+    if (stampFee > 0) {
+      feeBreakdown =
+          '📋 *تفاصيل المصاريف المقررة:*\n'
+          '• قيمة التدريب والاشتراك: ${AppFormatters.formatCurrency(subFee)}\n'
+          '• رسوم الكارنيه والاستمارة: ${AppFormatters.formatCurrency(stampFee)}\n'
+          '• إجمالي المطلوب سداده: ${AppFormatters.formatCurrency(totalDue)}\n';
+    } else {
+      feeBreakdown =
+          '📋 *المبلغ المطلوب سداده:* ${AppFormatters.formatCurrency(totalDue)}\n';
+    }
+
+    final paymentStatusNote = remaining <= 0
+        ? '✅ *حالة السداد:* مدفوع بالكامل (خالص)'
+        : '⚠️ *حالة السداد:* متبقي ${AppFormatters.formatCurrency(remaining)}';
+
     return '🏊‍♂️ *أكاديمية عالم السباحة (دار المشاة)* 🏊‍♂️\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
         '$title\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
         '👤 *السباح:* ${sub.playerName}\n'
-        '🔢 *كود اللاعب:* ${sub.playerCode}\n'
-        '🏷️ *نوع الاشتراك:* ${sub.subscriptionType}\n'
+        '🔢 *كود العضوية:* ${sub.playerCode}\n'
+        '🏷️ *نوع التدريب:* ${sub.subscriptionType}\n'
         '👥 *المجموعة:* ${sub.groupCode} - كابتن ${sub.coachName}\n'
-        '🗓️ *أيام التدريب:* $days $time\n'
+        '🗓️ *أيام ومواعيد التدريب:* $days $time\n'
         '🌊 *تاريخ أول حصة (نزول المياة):* $startDateFormatted\n'
         '🎯 *عدد الحصص المقررة:* ${sub.sessionsCount} حصة\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
-        '💰 *المبلغ المقرر:* ${AppFormatters.formatCurrency(sub.amountRequired)}\n'
-        '💵 *المبلغ المسدد:* ${AppFormatters.formatCurrency(sub.amountPaid)}\n'
-        '⏳ *المبلغ المتبقي:* ${AppFormatters.formatCurrency(sub.amountRemaining)}\n'
-        '💳 *طريقة الدفع:* ${sub.paymentMethod}\n'
+        '$feeBreakdown'
         '━━━━━━━━━━━━━━━━━━━━━\n'
-        '🌟 نتمنى للسباح وقتاً ممتعاً وتدريباً موفقاً وتطوراً مستمراً!';
+        '💵 *المبلغ المسدد:* ${AppFormatters.formatCurrency(paid)}\n'
+        '⏳ *المبلغ المتبقي:* ${AppFormatters.formatCurrency(remaining)}\n'
+        '💳 *طريقة الدفع:* ${sub.paymentMethod}\n'
+        '$paymentStatusNote\n'
+        '━━━━━━━━━━━━━━━━━━━━━\n'
+        '🌟 نتمنى لبطلنا العزيز وقتاً ممتعاً وتدريباً موفقاً وتطوراً مستمراً!\n'
+        '📞 للاستفسارات وخدمة العملاء: نرحب بتواصلكم دائماً.';
   }
 
   /// Generate WhatsApp message for new player registration
@@ -121,13 +146,15 @@ class WhatsAppHelper {
         '━━━━━━━━━━━━━━━━━━━━━\n'
         '🎉 *أهلاً بك في أسرة الأكاديمية!* 🎉\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
-        '👤 *اسم السباح:* ${player.playerName}\n'
+        '👤 *اسم السباح البطل:* ${player.playerName}\n'
         '🔢 *كود العضوية والباركود:* ${player.playerCode}\n'
         '🏢 *الفرع:* ${player.branch}\n'
         '🏷️ *نوع القيد:* ${player.customerType}\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
-        'تم تسجيل بياناتك بنجاح في النظام الإلكتروني.\n'
-        'يمكنك استخدام كود الباركود الخاص بك لتسجيل الحضور بسهولة عند كل تمرينة.\n'
-        'نتمنى لكم تجربة رياضية مميزة! 🥇';
+        '✅ تم تسجيل بياناتك بنجاح في النظام الإلكتروني للأكاديمية.\n'
+        '📲 كارت الباركود الرقمي الخاص باللاعب مرفق لتسجيل الحضور بسهولة وسرعة عند كل تمرين.\n'
+        '💡 يُرجى الاحتفاظ بصورة الكارت على هاتفك لإبرازه عند بوابة المسبح.\n'
+        '━━━━━━━━━━━━━━━━━━━━━\n'
+        'نتمنى لكم ولأبطالنا تجربة رياضية مميزة ومليئة بالبطولات! 🥇';
   }
 }
