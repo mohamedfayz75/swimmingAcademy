@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:geolocator/geolocator.dart';
+import '../rbac/app_role.dart';
 import '../../features/auth/models/user_model.dart';
 
 class TelemetryService {
