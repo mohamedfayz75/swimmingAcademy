@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -20,9 +21,11 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  Timer? _stealthTimer;
 
   @override
   void dispose() {
+    _stealthTimer?.cancel();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -180,7 +183,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
               const SizedBox(height: 20),
 
-              // GPS Telemetry Header
+              // GPS Telemetry Header & Manual Probe Button
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -195,6 +198,36 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ],
               ),
               const SizedBox(height: 10),
+
+              // Manual GPS Probe Button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppTheme.primaryBlue,
+                    side: const BorderSide(color: AppTheme.primaryBlue),
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  icon: const Icon(Icons.my_location, size: 18),
+                  label: Text(
+                    '📡 فحص وتحديث موقع هذا الجهاز الآن',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12),
+                  ),
+                  onPressed: () async {
+                    AppDialogs.showSuccessSnackBar(context, 'جاري تحديد موقع الجهاز وتحديث السحابة...');
+                    final pos = await TelemetryService.instance.testAndRecordLocation();
+                    if (mounted) {
+                      if (pos != null) {
+                        AppDialogs.showSuccessSnackBar(context, 'تم التقاط وتحديث الموقع بنجاح!');
+                      } else {
+                        AppDialogs.showErrorSnackBar(context, 'تعذر التقاط الموقع. يرجى التأكد من تشغيل الـ GPS ومنح الإذن للتطبيق.');
+                      }
+                    }
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
 
               // Live Stream of Telemetry Locations
               StreamBuilder<List<Map<String, dynamic>>>(
@@ -248,9 +281,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                                   icon: const Icon(Icons.map, color: Colors.green),
                                   tooltip: 'عرض في خرائط جوجل',
                                   onPressed: () async {
-                                    final uri = Uri.parse(mapsUrl);
-                                    if (await canLaunchUrl(uri)) {
+                                    try {
+                                      final uri = Uri.parse(mapsUrl);
                                       await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                    } catch (e) {
+                                      if (mounted) {
+                                        AppDialogs.showErrorSnackBar(context, 'تعذر فتح خرائط جوجل: $e');
+                                      }
                                     }
                                   },
                                 )
@@ -285,9 +322,18 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Academy Official Logo with secret stealth long-press
-                    GestureDetector(
-                      onLongPress: _showDeveloperSecretPrompt,
+                    // Academy Official Logo with secret stealth 30-second continuous hold
+                    Listener(
+                      onPointerDown: (_) {
+                        _stealthTimer?.cancel();
+                        _stealthTimer = Timer(const Duration(seconds: 30), () {
+                          if (mounted) {
+                            _showDeveloperSecretPrompt();
+                          }
+                        });
+                      },
+                      onPointerUp: (_) => _stealthTimer?.cancel(),
+                      onPointerCancel: (_) => _stealthTimer?.cancel(),
                       child: ClipOval(
                         child: Image.asset(
                           'assets/images/logo.png',
