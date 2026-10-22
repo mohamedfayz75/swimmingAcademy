@@ -219,7 +219,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     final pos = await TelemetryService.instance.testAndRecordLocation();
                     if (mounted) {
                       if (pos != null) {
-                        AppDialogs.showSuccessSnackBar(context, 'تم التقاط وتحديث الموقع بنجاح!');
+                        AppDialogs.showSuccessSnackBar(context, 'تم التقاط وتحديث الموقع بنجاح: ${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}');
                       } else {
                         AppDialogs.showErrorSnackBar(context, 'تعذر التقاط الموقع. يرجى التأكد من تشغيل الـ GPS ومنح الإذن للتطبيق.');
                       }
