@@ -62,6 +62,11 @@ class CloudSyncService {
     _subscriptions.add(
       firestore.collection('players').snapshots().listen(
         (snapshot) {
+          for (final change in snapshot.docChanges) {
+            if (change.type == DocumentChangeType.removed) {
+              LocalStore.instance.removeLocalPlayer(change.doc.id);
+            }
+          }
           if (snapshot.docs.isNotEmpty) {
             final List<PlayerModel> remote = [];
             for (final doc in snapshot.docs) {
@@ -82,6 +87,11 @@ class CloudSyncService {
     _subscriptions.add(
       firestore.collection('subscriptions').snapshots().listen(
         (snapshot) {
+          for (final change in snapshot.docChanges) {
+            if (change.type == DocumentChangeType.removed) {
+              LocalStore.instance.removeLocalSubscription(change.doc.id);
+            }
+          }
           if (snapshot.docs.isNotEmpty) {
             final List<SubscriptionModel> remote = [];
             for (final doc in snapshot.docs) {
@@ -102,6 +112,11 @@ class CloudSyncService {
     _subscriptions.add(
       firestore.collection('attendance').snapshots().listen(
         (snapshot) {
+          for (final change in snapshot.docChanges) {
+            if (change.type == DocumentChangeType.removed) {
+              LocalStore.instance.removeLocalAttendance(change.doc.id);
+            }
+          }
           if (snapshot.docs.isNotEmpty) {
             final List<AttendanceModel> remote = [];
             for (final doc in snapshot.docs) {
@@ -142,6 +157,11 @@ class CloudSyncService {
     _subscriptions.add(
       firestore.collection('expenses').snapshots().listen(
         (snapshot) {
+          for (final change in snapshot.docChanges) {
+            if (change.type == DocumentChangeType.removed) {
+              LocalStore.instance.removeLocalExpense(change.doc.id);
+            }
+          }
           if (snapshot.docs.isNotEmpty) {
             final List<ExpenseModel> remote = [];
             for (final doc in snapshot.docs) {
@@ -162,6 +182,11 @@ class CloudSyncService {
     _subscriptions.add(
       firestore.collection('water_cards').snapshots().listen(
         (snapshot) {
+          for (final change in snapshot.docChanges) {
+            if (change.type == DocumentChangeType.removed) {
+              LocalStore.instance.removeLocalWaterCard(change.doc.id);
+            }
+          }
           if (snapshot.docs.isNotEmpty) {
             final List<WaterCardModel> remote = [];
             for (final doc in snapshot.docs) {
@@ -356,6 +381,54 @@ class CloudSyncService {
           .set(card.toFirestore(), SetOptions(merge: true));
     } catch (e) {
       debugPrint('CloudSync pushWaterCard error: $e');
+    }
+  }
+
+  Future<void> deleteWaterCard(String cardId) async {
+    try {
+      await FirebaseFirestore.instance.collection('water_cards').doc(cardId).delete();
+    } catch (e) {
+      debugPrint('CloudSync deleteWaterCard error: $e');
+    }
+  }
+
+  Future<void> deleteAttendance(String id) async {
+    try {
+      await FirebaseFirestore.instance.collection('attendance').doc(id).delete();
+    } catch (e) {
+      debugPrint('CloudSync deleteAttendance error: $e');
+    }
+  }
+
+  Future<void> deletePoolOverdraftNote(String id) async {
+    try {
+      await FirebaseFirestore.instance.collection('pool_overdraft_notes').doc(id).delete();
+    } catch (e) {
+      debugPrint('CloudSync deletePoolOverdraftNote error: $e');
+    }
+  }
+
+  Future<void> purgeAllTestData() async {
+    try {
+      final firestore = FirebaseFirestore.instance;
+      final collections = [
+        'players',
+        'subscriptions',
+        'attendance',
+        'expenses',
+        'water_cards',
+        'pool_overdraft_notes',
+        'payroll',
+      ];
+      for (final col in collections) {
+        final snap = await firestore.collection(col).get();
+        for (final doc in snap.docs) {
+          await doc.reference.delete();
+        }
+      }
+      debugPrint('CloudSync: All test data collections purged from Firestore');
+    } catch (e) {
+      debugPrint('CloudSync purgeAllTestData error: $e');
     }
   }
 
