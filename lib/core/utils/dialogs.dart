@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:qr_flutter/qr_flutter.dart';
@@ -213,7 +214,37 @@ class AppDialogs {
                   ),
                 ),
 
-                const SizedBox(height: 18),
+                const SizedBox(height: 14),
+
+                // Helpful Sharing Tip
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE8F5E9),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFFA5D6A7)),
+                  ),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Icon(Icons.tips_and_updates, color: Color(0xFF2E7D32), size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '💡 نصيحة لإرسال الصورة مباشرة: اضغط أولاً على (💬 إرسال رسالة الترحيب) لفتح شات ولي الأمر فوراً بالرقم حتى لو غير مسجل، ثم اضغط (📸 مشاركة كارت الباركود كصورة) لتجده بأول محادثة في الواتساب.',
+                          style: GoogleFonts.cairo(
+                            fontSize: 11,
+                            color: const Color(0xFF1B5E20),
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 12),
 
                 // Button 1: Direct Message to Guardian Chat (Fastest & direct to phone)
                 SizedBox(
@@ -288,6 +319,12 @@ class AppDialogs {
                               await file.writeAsBytes(pngBytes);
 
                               final welcomeText = WhatsAppHelper.buildPlayerWelcomeMessage(player);
+
+                              // Auto copy guardian phone & welcome text to clipboard
+                              try {
+                                await Clipboard.setData(ClipboardData(text: '${player.guardianPhone}\n$welcomeText'));
+                              } catch (_) {}
+
                               await Share.shareXFiles(
                                 [XFile(file.path)],
                                 text: welcomeText,
