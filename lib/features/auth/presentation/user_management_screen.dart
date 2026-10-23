@@ -365,108 +365,152 @@ class _UserManagementScreenState extends ConsumerState<UserManagementScreen> {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(16),
                   side: BorderSide(
-                    color: isOwner ? AppTheme.warningOrange.withOpacity(0.5) : Colors.transparent,
+                    color: isOwner ? AppTheme.warningOrange.withOpacity(0.5) : Colors.grey.shade200,
                     width: 1.5,
                   ),
                 ),
                 elevation: 2,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  child: Row(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: isOwner ? AppTheme.warningOrange.withOpacity(0.15) : AppTheme.primaryBlue.withOpacity(0.1),
-                        child: Icon(
-                          isOwner ? Icons.admin_panel_settings : Icons.badge,
-                          color: isOwner ? AppTheme.warningOrange : AppTheme.primaryBlue,
-                          size: 26,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
+                      // Top Row: Avatar + Info + Switch
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 22,
+                            backgroundColor: isOwner ? AppTheme.warningOrange.withOpacity(0.15) : AppTheme.primaryBlue.withOpacity(0.1),
+                            child: Icon(
+                              isOwner ? Icons.admin_panel_settings : Icons.badge,
+                              color: isOwner ? AppTheme.warningOrange : AppTheme.primaryBlue,
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  user.displayName,
-                                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 15),
-                                ),
-                                const SizedBox(width: 8),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                  decoration: BoxDecoration(
-                                    color: isOwner ? AppTheme.warningOrange.withOpacity(0.12) : AppTheme.primaryBlue.withOpacity(0.08),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Text(
-                                    user.role.arabicTitle,
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.bold,
-                                      color: isOwner ? AppTheme.warningOrange : AppTheme.primaryBlue,
+                                Row(
+                                  children: [
+                                    Flexible(
+                                      child: Text(
+                                        user.displayName,
+                                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 15),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
                                     ),
-                                  ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: isOwner ? AppTheme.warningOrange.withOpacity(0.12) : AppTheme.primaryBlue.withOpacity(0.08),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        user.role.arabicTitle,
+                                        style: GoogleFonts.cairo(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: isOwner ? AppTheme.warningOrange : AppTheme.primaryBlue,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  user.phoneNumber != null && user.phoneNumber!.isNotEmpty
+                                      ? 'الهاتف: ${user.phoneNumber}'
+                                      : 'الحساب: نشط في النظام',
+                                  style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 4),
+                          ),
+                          // Active / Inactive Switch with label
+                          Column(
+                            children: [
+                              Switch(
+                                value: user.isActive,
+                                activeColor: AppTheme.accentCyan,
+                                onChanged: (val) {
+                                  ref.read(currentUserProvider.notifier).toggleUserActive(user.uid, val);
+                                  AppDialogs.showSuccessSnackBar(
+                                    context,
+                                    val ? 'تم تنشيط حساب ${user.displayName}' : 'تم إيقاف حساب ${user.displayName}',
+                                  );
+                                },
+                              ),
+                              Text(
+                                user.isActive ? 'مفعّل' : 'معطّل',
+                                style: GoogleFonts.cairo(fontSize: 10, color: user.isActive ? AppTheme.successGreen : AppTheme.textMuted),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+
+                      const SizedBox(height: 12),
+
+                      // Middle Box: Credentials
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.grey.shade200),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
                             Row(
                               children: [
-                                Text(
-                                  'اسم المستخدم: ',
-                                  style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
-                                ),
-                                Text(
-                                  user.username,
-                                  style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textDark),
-                                ),
-                                const SizedBox(width: 14),
-                                Text(
-                                  'كلمة المرور: ',
-                                  style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
-                                ),
-                                Text(
-                                  user.password,
-                                  style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
-                                ),
+                                const Icon(Icons.person_outline, size: 16, color: AppTheme.primaryBlue),
+                                const SizedBox(width: 4),
+                                Text('اسم الدخول: ', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted)),
+                                Text(user.username, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                const Icon(Icons.lock_outline, size: 16, color: AppTheme.primaryBlue),
+                                const SizedBox(width: 4),
+                                Text('كلمة المرور: ', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted)),
+                                Text(user.password, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
                               ],
                             ),
                           ],
                         ),
                       ),
 
-                      // Action Buttons: Edit, Key, Delete, Active Switch
+                      const SizedBox(height: 10),
+                      const Divider(height: 1),
+                      const SizedBox(height: 6),
+
+                      // Bottom Actions: Edit, Change Password, Delete
                       Row(
-                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.end,
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, color: AppTheme.primaryBlue, size: 20),
-                            tooltip: 'تعديل بيانات الحساب والرتبة',
+                          TextButton.icon(
+                            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                            icon: const Icon(Icons.edit_outlined, size: 16, color: AppTheme.primaryBlue),
+                            label: Text('تعديل البيانات', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.primaryBlue)),
                             onPressed: () => _showEditUserDialog(user),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.key, color: AppTheme.warningOrange, size: 20),
-                            tooltip: 'تغيير كلمة المرور',
+                          const SizedBox(width: 4),
+                          TextButton.icon(
+                            style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
+                            icon: const Icon(Icons.key, size: 16, color: AppTheme.warningOrange),
+                            label: Text('تغيير الرمز', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.warningOrange)),
                             onPressed: () => _showChangePasswordDialog(user),
                           ),
+                          const SizedBox(width: 4),
                           IconButton(
                             icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed, size: 20),
                             tooltip: 'حذف الحساب نهائياً',
                             onPressed: () => _confirmDeleteUser(user),
-                          ),
-                          Switch(
-                            value: user.isActive,
-                            activeColor: AppTheme.accentCyan,
-                            onChanged: (val) {
-                              ref.read(currentUserProvider.notifier).toggleUserActive(user.uid, val);
-                              AppDialogs.showSuccessSnackBar(
-                                context,
-                                val ? 'تم تنشيط حساب ${user.displayName}' : 'تم إيقاف حساب ${user.displayName}',
-                              );
-                            },
                           ),
                         ],
                       ),
