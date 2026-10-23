@@ -1434,6 +1434,8 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
+          final currentUser = ref.watch(currentUserProvider).value;
+          final isOwner = currentUser?.role.isOwner ?? false;
           final allCards = LocalStore.instance.getWaterCards();
           final selectedMonthYear =
               '${currentArchiveMonth.month.toString().padLeft(2, '0')}-${currentArchiveMonth.year}';
@@ -1694,21 +1696,36 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                                             ),
                                           ],
                                         ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                          decoration: BoxDecoration(
-                                            color: statusColor.withOpacity(0.12),
-                                            borderRadius: BorderRadius.circular(8),
-                                            border: Border.all(color: statusColor),
-                                          ),
-                                          child: Text(
-                                            statusText,
-                                            style: GoogleFonts.cairo(
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.bold,
-                                              color: statusColor,
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                              decoration: BoxDecoration(
+                                                color: statusColor.withOpacity(0.12),
+                                                borderRadius: BorderRadius.circular(8),
+                                                border: Border.all(color: statusColor),
+                                              ),
+                                              child: Text(
+                                                statusText,
+                                                style: GoogleFonts.cairo(
+                                                  fontSize: 11,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: statusColor,
+                                                ),
+                                              ),
                                             ),
-                                          ),
+                                            if (isOwner) ...[
+                                              const SizedBox(width: 4),
+                                              IconButton(
+                                                icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed, size: 20),
+                                                padding: EdgeInsets.zero,
+                                                constraints: const BoxConstraints(),
+                                                tooltip: 'حذف الكارت من الأرشيف',
+                                                onPressed: () => _confirmDeleteWaterCard(card, () => setModalState(() {})),
+                                              ),
+                                            ],
+                                          ],
                                         ),
                                       ],
                                     ),
@@ -1823,5 +1840,88 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
         onSelected: (_) => onSelect(value),
       ),
     );
+  }
+
+  Future<void> _confirmDeleteWaterCard(WaterCardModel card, VoidCallback onDeleted) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_forever, color: AppTheme.errorRed, size: 28),
+            const SizedBox(width: 8),
+            Text('تأكيد حذف الكارت نهائياً', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'هل تريد بالتأكيد حذف «${card.cardName}» ومصروفه نهائياً؟',
+              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.red.shade200),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('سعر الكارت ومصروفه:', style: GoogleFonts.cairo(fontSize: 12)),
+                      Text('${card.cardPrice} ج.م', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12, color: AppTheme.errorRed)),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text('إجمالي الحصص:', style: GoogleFonts.cairo(fontSize: 12)),
+                      Text('${card.totalSessions} حصة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '⚠️ سيتم مسح الكارت نهائياً من الأرشيف ومن قاعدة البيانات السحابية (Firebase) وخصم قيمته من مصروفات الشهر تلقائياً.',
+              style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted, height: 1.4),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('إلغاء', style: GoogleFonts.cairo(color: AppTheme.textMuted)),
+          ),
+          ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.errorRed,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            icon: const Icon(Icons.delete_forever, size: 18),
+            label: Text('تأكيد الحذف النهائي', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            onPressed: () => Navigator.pop(ctx, true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await LocalStore.instance.deleteWaterCard(card.id);
+      onDeleted();
+      if (mounted) {
+        AppDialogs.showSuccessSnackBar(context, 'تم حذف كارت «${card.cardName}» ومصروفه نهائياً');
+      }
+    }
   }
 }
