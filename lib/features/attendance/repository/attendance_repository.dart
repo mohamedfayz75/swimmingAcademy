@@ -108,8 +108,19 @@ class AttendanceRepository {
     );
   }
 
-  // Stream today's attendance logs
+  // Stream today's attendance logs (filtered strictly for today)
   Stream<List<AttendanceModel>> streamTodayAttendance() {
-    return _store.attendanceStream;
+    final now = DateTime.now();
+    return _store.attendanceStream.map((list) {
+      return list.where((a) {
+        final d = a.attendanceDate.toDate();
+        return d.year == now.year && d.month == now.month && d.day == now.day;
+      }).toList();
+    });
+  }
+
+  // Delete attendance record (Owner control)
+  Future<void> deleteAttendance(String id) async {
+    await _store.deleteAttendance(id);
   }
 }
