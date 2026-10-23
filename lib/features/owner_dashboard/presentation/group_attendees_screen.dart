@@ -190,7 +190,14 @@ class _GroupAttendeesScreenState extends ConsumerState<GroupAttendeesScreen> {
                     final subscriptionsAsync = innerRef.watch(groupSubscriptionsStreamProvider(currentCode));
 
                     return subscriptionsAsync.when(
-                      data: (subs) {
+                      data: (subsRaw) {
+                        // Deduplicate by playerCode - ensure each swimmer appears once with latest active subscription
+                        final Map<String, SubscriptionModel> uniqueMap = {};
+                        for (final s in subsRaw) {
+                          uniqueMap[s.playerCode.trim().toUpperCase()] = s;
+                        }
+                        final subs = uniqueMap.values.toList();
+
                         // Calculate today attendance for this group
                         final now = DateTime.now();
                         final todayStart = DateTime(now.year, now.month, now.day);
