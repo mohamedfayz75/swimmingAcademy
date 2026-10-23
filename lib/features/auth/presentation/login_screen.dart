@@ -187,13 +187,53 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    '📍 مواقع الإداري والمالك (GPS Telemetry)',
-                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.primaryBlue),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '📍 مواقع الإداري والمالك (GPS Telemetry)',
+                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.primaryBlue),
+                      ),
+                      Text(
+                        'آخر موقع نشط لكل مستخدم',
+                        style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted),
+                      ),
+                    ],
                   ),
-                  Text(
-                    'مباشر من السحابة',
-                    style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted),
+                  TextButton.icon(
+                    style: TextButton.styleFrom(
+                      foregroundColor: AppTheme.errorRed,
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    icon: const Icon(Icons.delete_sweep, size: 16),
+                    label: Text(
+                      'مسح السجل',
+                      style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                    onPressed: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          title: Text('مسح سجل المواقع', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                          content: Text('هل تريد مسح جميع سجلات المواقع السابقة من السحابة والبدء على نظيف؟', style: GoogleFonts.cairo(fontSize: 13)),
+                          actions: [
+                            TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed, foregroundColor: Colors.white),
+                              onPressed: () => Navigator.pop(ctx, true),
+                              child: const Text('مسح الكل'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true && mounted) {
+                        await TelemetryService.instance.clearAllTelemetry();
+                        if (mounted) {
+                          AppDialogs.showSuccessSnackBar(context, 'تم مسح سجل المواقع بنجاح');
+                        }
+                      }
+                    },
                   ),
                 ],
               ),
@@ -229,7 +269,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               ),
               const SizedBox(height: 12),
 
-              // Live Stream of Telemetry Locations
+              // Live Stream of Telemetry Locations (1 latest card per user)
               StreamBuilder<List<Map<String, dynamic>>>(
                 stream: TelemetryService.instance.streamTelemetryLocations(),
                 builder: (context, snapshot) {
@@ -237,7 +277,20 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     return const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator()));
                   }
                   final docs = snapshot.data ?? [];
-                  if (docs.isEmpty) {
+
+                  // Deduplicate to show only 1 latest active card per user
+                  final Map<String, Map<String, dynamic>> uniqueUsers = {};
+                  for (final item in docs) {
+                    final key = (item['uid'] as String?)?.isNotEmpty == true
+                        ? item['uid'] as String
+                        : (item['username'] as String? ?? item['docId'] as String);
+                    if (!uniqueUsers.containsKey(key)) {
+                      uniqueUsers[key] = item;
+                    }
+                  }
+                  final displayList = uniqueUsers.values.toList();
+
+                  if (displayList.isEmpty) {
                     return Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -255,7 +308,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   }
 
                   return Column(
-                    children: docs.map((item) {
+                    children: displayList.map((item) {
                       final name = item['displayName'] ?? item['username'] ?? 'مستخدم';
                       final role = item['roleTitle'] ?? item['role'] ?? 'موظف';
                       final lat = item['latitude'];
