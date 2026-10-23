@@ -19,10 +19,10 @@ class SubscriptionRepository {
     return _store.subscriptionsStream;
   }
 
-  // Stream subscriptions for a specific group
+  // Stream subscriptions for a specific group (deduplicated by player, active only)
   Stream<List<SubscriptionModel>> streamSubscriptionsByGroup(String groupCode) {
     return _store.subscriptionsStream.map(
-      (list) => list.where((s) => s.groupCode == groupCode).toList(),
+      (list) => _store.getActiveSubscriptionsForGroup(groupCode),
     );
   }
 }
