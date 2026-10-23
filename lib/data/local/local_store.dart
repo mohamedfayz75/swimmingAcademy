@@ -589,6 +589,52 @@ class LocalStore {
     }
   }
 
+  // --- Realtime Remote Document Deletion Handlers ---
+  void removeLocalWaterCard(String id) {
+    final before = _waterCards.length;
+    _waterCards.removeWhere((w) => w.id == id);
+    if (_waterCards.length != before) {
+      _waterCardsController.add(List.unmodifiable(_waterCards));
+      _saveAll();
+    }
+  }
+
+  void removeLocalAttendance(String id) {
+    final before = _attendance.length;
+    _attendance.removeWhere((a) => a.id == id);
+    if (_attendance.length != before) {
+      _attendanceController.add(List.unmodifiable(_attendance));
+      _saveAll();
+    }
+  }
+
+  void removeLocalExpense(String id) {
+    final before = _expenses.length;
+    _expenses.removeWhere((e) => e.id == id);
+    if (_expenses.length != before) {
+      _expensesController.add(List.unmodifiable(_expenses));
+      _saveAll();
+    }
+  }
+
+  void removeLocalSubscription(String id) {
+    final before = _subscriptions.length;
+    _subscriptions.removeWhere((s) => s.id == id);
+    if (_subscriptions.length != before) {
+      _subscriptionsController.add(List.unmodifiable(_subscriptions));
+      _saveAll();
+    }
+  }
+
+  void removeLocalPlayer(String playerCode) {
+    final before = _players.length;
+    _players.removeWhere((p) => p.playerCode == playerCode);
+    if (_players.length != before) {
+      _playersController.add(List.unmodifiable(_players));
+      _saveAll();
+    }
+  }
+
   void mergeRemotePayrolls(List<PayrollModel> remote) {
     bool changed = false;
     for (final p in remote) {
@@ -1283,6 +1329,23 @@ class LocalStore {
     );
   }
 
+  Future<void> deleteWaterCard(String cardId) async {
+    _waterCards.removeWhere((w) => w.id == cardId);
+    _waterCardsController.add(List.unmodifiable(_waterCards));
+    // Also delete linked expense if present
+    deleteExpense('EXP-$cardId');
+    await _saveAll();
+    await CloudSyncService.instance.deleteWaterCard(cardId);
+    await CloudSyncService.instance.deleteExpense('EXP-$cardId');
+  }
+
+  Future<void> deleteAttendance(String attendanceId) async {
+    _attendance.removeWhere((a) => a.id == attendanceId);
+    _attendanceController.add(List.unmodifiable(_attendance));
+    await _saveAll();
+    await CloudSyncService.instance.deleteAttendance(attendanceId);
+  }
+
   Future<void> wipeAllTestData() async {
     _players.clear();
     _subscriptions.clear();
@@ -1300,6 +1363,7 @@ class LocalStore {
     _poolOverdraftNotesController.add(List.unmodifiable(_poolOverdraftNotes));
 
     await _saveAll();
+    await CloudSyncService.instance.purgeAllTestData();
   }
 
   // --- Users Management (Staff & Admin) ---
