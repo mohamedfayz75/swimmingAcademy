@@ -47,6 +47,7 @@ class LocalStore {
   final _poolOverdraftNotesController = StreamController<List<PoolOverdraftNoteModel>>.broadcast();
   final _coachesController = StreamController<List<CoachModel>>.broadcast();
   final _expensesController = StreamController<List<ExpenseModel>>.broadcast();
+  final _payrollsController = StreamController<List<PayrollModel>>.broadcast();
 
   // Streams that emit current cached data immediately to any new listener
   Stream<List<UserModel>> get usersStream async* {
@@ -92,6 +93,11 @@ class LocalStore {
   Stream<List<ExpenseModel>> get expensesStream async* {
     yield List.unmodifiable(_expenses);
     yield* _expensesController.stream;
+  }
+
+  Stream<List<PayrollModel>> get payrollsStream async* {
+    yield List.unmodifiable(_payrolls);
+    yield* _payrollsController.stream;
   }
 
   Future<void> init() async {
@@ -276,6 +282,15 @@ class LocalStore {
         }
         _users.clear();
         _users.addAll(uniqueUsers.values);
+
+        // Automatic cleanup of legacy prototype demo records
+        _players.removeWhere((p) => (p.playerCode == 'SW-101' && p.playerName.contains('يوسف')) || (p.playerCode == 'SW-102' && p.playerName.contains('مريم')));
+        _subscriptions.removeWhere((s) => s.id == 'SUB-101' || s.id == 'SUB-102');
+        _coaches.removeWhere((c) => (c.coachId == 'COACH-01' && c.coachName.contains('أحمد سامي')) || (c.coachId == 'COACH-02' && c.coachName.contains('محمود رزق')) || (c.coachId == 'COACH-03' && c.coachName.contains('طارق عبد الله')));
+        _groups.removeWhere((g) => (g.groupCode == 'GRP-02' && g.coachName.contains('محمود رزق')) || (g.groupCode == 'GRP-03' && g.coachName.contains('طارق عبد الله')));
+        _expenses.removeWhere((e) => e.id == 'EXP-WC-01' || e.id == 'EXP-WC-02' || e.id == 'EXP-03');
+        _waterCards.removeWhere((w) => w.id == 'WC-01' || w.id == 'WC-02');
+        _payrolls.removeWhere((p) => p.coachId == 'COACH-01' && p.coachName.contains('أحمد سامي'));
 
         // Fallback: If for any reason users list is empty, ensure default admin/owner accounts exist
         if (_users.isEmpty) {
@@ -574,6 +589,24 @@ class LocalStore {
     }
   }
 
+  void mergeRemotePayrolls(List<PayrollModel> remote) {
+    bool changed = false;
+    for (final p in remote) {
+      final index = _payrolls.indexWhere((x) => x.coachId == p.coachId && x.monthYear == p.monthYear);
+      if (index != -1) {
+        _payrolls[index] = p;
+        changed = true;
+      } else {
+        _payrolls.add(p);
+        changed = true;
+      }
+    }
+    if (changed) {
+      _payrollsController.add(List.unmodifiable(_payrolls));
+      _saveAll();
+    }
+  }
+
   void mergeRemoteCoaches(List<CoachModel> remote) {
     bool changed = false;
     for (final c in remote) {
@@ -660,244 +693,6 @@ class LocalStore {
     _coaches.clear();
     _payrolls.clear();
     _expenses.clear();
-
-    final now = Timestamp.now();
-    final currentMonth = '${DateTime.now().month.toString().padLeft(2, '0')}-${DateTime.now().year}';
-
-    // 0. Default Users (Owner & Staff)
-    _users.addAll([
-      UserModel(
-        uid: 'user-owner-1',
-        username: 'owner',
-        password: '123',
-        email: 'owner@swimmingworld.com',
-        displayName: 'المالك العام',
-        role: UserRole.owner,
-        createdAt: now,
-      ),
-      UserModel(
-        uid: 'user-staff-1',
-        username: 'staff',
-        password: '123',
-        email: 'staff@swimmingworld.com',
-        displayName: 'موظف الاستقبال',
-        role: UserRole.staff,
-        createdAt: now,
-      ),
-    ]);
-
-    // 1. Coaches
-    _coaches.addAll([
-      const CoachModel(
-        coachId: 'COACH-01',
-        coachName: 'كابتن أحمد سامي',
-        phoneNumber: '01012345678',
-        specialty: 'تعليم مبتدئين ونجمات',
-        status: 'نشط',
-        groupsCount: 2,
-      ),
-      const CoachModel(
-        coachId: 'COACH-02',
-        coachName: 'كابتن محمود رزق',
-        phoneNumber: '01198765432',
-        specialty: 'برايفت وتجهيزي',
-        status: 'نشط',
-        groupsCount: 1,
-      ),
-      const CoachModel(
-        coachId: 'COACH-03',
-        coachName: 'كابتن طارق عبد الله',
-        phoneNumber: '01234567890',
-        specialty: 'برايفت رضع',
-        status: 'نشط',
-        groupsCount: 1,
-      ),
-    ]);
-
-    // 2. Groups (with 4 specialized types)
-    _groups.addAll([
-      GroupModel(
-        groupCode: 'GRP-01',
-        groupType: AppConstants.groupTypeNormal,
-        coachId: 'COACH-01',
-        coachName: 'كابتن أحمد سامي',
-        trainingDays: ['السبت', 'الثلاثاء'],
-        sessionTime: '05:00 PM',
-        trainingType: 'تعليم (مبتدئ)',
-        level: 'مبتدئ',
-        maxCapacity: 6,
-        currentRegistered: 2,
-      ),
-      GroupModel(
-        groupCode: 'GRP-02',
-        groupType: AppConstants.groupTypeSemiPrivate,
-        coachId: 'COACH-02',
-        coachName: 'كابتن محمود رزق',
-        trainingDays: ['الأحد', 'الأربعاء'],
-        sessionTime: '06:00 PM',
-        trainingType: 'نجمة 1',
-        level: 'متوسط',
-        maxCapacity: 2,
-        currentRegistered: 1,
-      ),
-      GroupModel(
-        groupCode: 'GRP-03',
-        groupType: AppConstants.groupTypeBabyPrivate,
-        coachId: 'COACH-03',
-        coachName: 'كابتن طارق عبد الله',
-        trainingDays: ['الاثنين', 'الخميس'],
-        sessionTime: '04:00 PM',
-        trainingType: 'برايفت رضع',
-        level: 'رضع',
-        maxCapacity: 2, // 30 min each
-        currentRegistered: 1,
-      ),
-    ]);
-
-    // 3. Players
-    _players.addAll([
-      PlayerModel(
-        playerCode: 'SW-101',
-        playerName: 'يوسف أحمد علي',
-        branch: AppConstants.defaultBranch,
-        birthDate: Timestamp.fromDate(DateTime(2016, 4, 15)),
-        guardianPhone: '01098765432',
-        customerType: 'عادي (جديد)',
-        qrCodeUrl: 'SW-101',
-        createdAt: now,
-      ),
-      PlayerModel(
-        playerCode: 'SW-102',
-        playerName: 'مريم محمود حسن',
-        branch: AppConstants.defaultBranch,
-        birthDate: Timestamp.fromDate(DateTime(2017, 7, 22)),
-        guardianPhone: '01123456789',
-        customerType: 'تجديد',
-        qrCodeUrl: 'SW-102',
-        createdAt: now,
-      ),
-    ]);
-
-    // 4. Subscriptions
-    _subscriptions.addAll([
-      SubscriptionModel(
-        id: 'SUB-101',
-        playerCode: 'SW-101',
-        playerName: 'يوسف أحمد علي',
-        branch: AppConstants.defaultBranch,
-        groupCode: 'GRP-01',
-        coachName: 'كابتن أحمد سامي',
-        trainingDays: ['السبت', 'الثلاثاء'],
-        sessionTime: '05:00 PM',
-        trainingType: 'تعليم (مبتدئ)',
-        stampCardFee: 50.0,
-        amountRequired: 800.0,
-        amountPaid: 850.0, // Fully paid
-        paymentMethod: AppConstants.paymentCash,
-        paymentDate: now,
-        subscriptionType: 'شهري (8 حصص)',
-        sessionsCount: 8,
-        attendedSessions: 3,
-        excusedSessions: 0,
-        startDate: now,
-        endDate: Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
-        bookingStatus: AppConstants.statusActive,
-        createdBy: 'staff-demo',
-      ),
-      SubscriptionModel(
-        id: 'SUB-102',
-        playerCode: 'SW-102',
-        playerName: 'مريم محمود حسن',
-        branch: AppConstants.defaultBranch,
-        groupCode: 'GRP-01',
-        coachName: 'كابتن أحمد سامي',
-        trainingDays: ['السبت', 'الثلاثاء'],
-        sessionTime: '05:00 PM',
-        trainingType: 'تعليم (مبتدئ)',
-        stampCardFee: 50.0,
-        amountRequired: 800.0,
-        amountPaid: 500.0, // Remaining 350
-        paymentMethod: AppConstants.paymentInstaPay,
-        paymentDate: now,
-        subscriptionType: 'شهري (8 حصص)',
-        sessionsCount: 8,
-        attendedSessions: 2,
-        excusedSessions: 0,
-        startDate: now,
-        endDate: Timestamp.fromDate(DateTime.now().add(const Duration(days: 30))),
-        bookingStatus: AppConstants.statusActive,
-        createdBy: 'staff-demo',
-      ),
-    ]);
-
-    // 5. Dual Pool Water Cards (Semi-Olympic & Recreational)
-    _waterCards.addAll([
-      WaterCardModel(
-        id: 'WC-01',
-        cardDate: now,
-        cardName: 'كارت مسبح نصف أولمبي #1',
-        poolType: AppConstants.poolSemiOlympic,
-        cardPrice: 1500.0,
-        totalSessions: 50,
-        usedSessions: 18,
-        monthlyClosingRef: currentMonth,
-      ),
-      WaterCardModel(
-        id: 'WC-02',
-        cardDate: now,
-        cardName: 'كارت مسبح ترفيهي #1',
-        poolType: AppConstants.poolRecreational,
-        cardPrice: 1200.0,
-        totalSessions: 40,
-        usedSessions: 8,
-        monthlyClosingRef: currentMonth,
-      ),
-    ]);
-
-    // 6. Expenses (Auto-populated with water cards + maintenance)
-    _expenses.addAll([
-      ExpenseModel(
-        id: 'EXP-WC-01',
-        category: 'كروت مياة',
-        amount: 1500.0,
-        date: now,
-        notes: 'شراء كارت مسبح نصف أولمبي #1',
-        monthYear: currentMonth,
-      ),
-      ExpenseModel(
-        id: 'EXP-WC-02',
-        category: 'كروت مياة',
-        amount: 1200.0,
-        date: now,
-        notes: 'شراء كارت مسبح ترفيهي #1',
-        monthYear: currentMonth,
-      ),
-      ExpenseModel(
-        id: 'EXP-03',
-        category: 'صيانة وفلاتر',
-        amount: 600.0,
-        date: now,
-        notes: 'صيانة مضخات وفلاتر المياه الأسبوعية',
-        monthYear: currentMonth,
-      ),
-    ]);
-
-    // 7. Initial Payroll
-    _payrolls.add(
-      PayrollModel(
-        coachId: 'COACH-01',
-        coachName: 'كابتن أحمد سامي',
-        totalSessions: 24,
-        sessionRate: 100.0,
-        advancePayments: 400.0,
-        paymentStatus: 'معلق',
-        payoutMethod: AppConstants.paymentCash,
-        payoutNotes: '',
-        payoutDate: now,
-        monthYear: currentMonth,
-      ),
-    );
-
     _notifyAll();
   }
 
@@ -910,6 +705,7 @@ class LocalStore {
     _waterCardsController.add(List.unmodifiable(_waterCards));
     _coachesController.add(List.unmodifiable(_coaches));
     _expensesController.add(List.unmodifiable(_expenses));
+    _payrollsController.add(List.unmodifiable(_payrolls));
   }
 
   // --- Players ---
@@ -1393,6 +1189,7 @@ class LocalStore {
     } else {
       _payrolls.add(payroll);
     }
+    _payrollsController.add(List.unmodifiable(_payrolls));
     _saveAll();
     CloudSyncService.instance.pushPayroll(payroll);
   }
