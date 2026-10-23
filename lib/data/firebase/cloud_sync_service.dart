@@ -237,6 +237,26 @@ class CloudSyncService {
         onError: (e) => debugPrint('Live sync users error: $e'),
       ),
     );
+
+    // 10. Payroll
+    _subscriptions.add(
+      firestore.collection('payroll').snapshots().listen(
+        (snapshot) {
+          if (snapshot.docs.isNotEmpty) {
+            final List<PayrollModel> remote = [];
+            for (final doc in snapshot.docs) {
+              try {
+                remote.add(PayrollModel.fromMap(doc.data()));
+              } catch (_) {}
+            }
+            if (remote.isNotEmpty) {
+              LocalStore.instance.mergeRemotePayrolls(remote);
+            }
+          }
+        },
+        onError: (e) => debugPrint('Live sync payroll error: $e'),
+      ),
+    );
   }
 
   // --- Outgoing Push Methods (Fire & Forget, offline safe) ---
