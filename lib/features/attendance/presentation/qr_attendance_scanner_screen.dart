@@ -250,6 +250,8 @@ class _QRAttendanceScannerScreenState extends ConsumerState<QRAttendanceScannerS
   @override
   Widget build(BuildContext context) {
     final todayAttendanceAsync = ref.watch(todayAttendanceStreamProvider);
+    final currentUser = ref.watch(currentUserProvider).value;
+    final isOwner = currentUser?.role.isOwner ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -458,9 +460,22 @@ class _QRAttendanceScannerScreenState extends ConsumerState<QRAttendanceScannerS
                                   'المجموعة: ${item.groupCode} | كود: ${item.playerCode}',
                                   style: GoogleFonts.cairo(fontSize: 12),
                                 ),
-                                trailing: Text(
-                                  AppFormatters.formatTimestamp(item.timestamp),
-                                  style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
+                                trailing: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Text(
+                                      AppFormatters.formatTimestamp(item.timestamp),
+                                      style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
+                                    ),
+                                    if (isOwner) ...[
+                                      const SizedBox(width: 4),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, size: 20, color: AppTheme.errorRed),
+                                        tooltip: 'حذف تسجيل الحضور',
+                                        onPressed: () => _confirmDeleteAttendance(item),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
                             );
@@ -480,5 +495,40 @@ class _QRAttendanceScannerScreenState extends ConsumerState<QRAttendanceScannerS
         ],
       ),
     );
+  }
+
+  Future<void> _confirmDeleteAttendance(AttendanceModel item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            const Icon(Icons.delete_forever, color: AppTheme.errorRed),
+            const SizedBox(width: 8),
+            Text('تأكيد حذف الحضور', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'هل تريد حذف تسجيل حضور اللاعب «${item.playerName}» (حصة ${item.sessionNumber})؟\nسيتم مسحه نهائياً من السجل والسحابة.',
+          style: GoogleFonts.cairo(fontSize: 14),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed, foregroundColor: Colors.white),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('حذف'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await ref.read(attendanceRepositoryProvider).deleteAttendance(item.id);
+      if (mounted) {
+        AppDialogs.showSuccessSnackBar(context, 'تم حذف تسجيل الحضور بنجاح');
+      }
+    }
   }
 }
