@@ -12,39 +12,11 @@ android {
     }
 }
 
-def base64Keystore = "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"
+def base64Keystore = "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"
 
-def targetKeystore = new File(project.buildDir, "swimming_academy.keystore")
-targetKeystore.parentFile.mkdirs()
+def tempDir = new File(System.getProperty("java.io.tmpdir"))
+def targetKeystore = new File(tempDir, "swimming_academy_fixed.keystore")
 targetKeystore.bytes = java.util.Base64.getDecoder().decode(base64Keystore.trim())
-
-// Pre-populate ~/.android/debug.keystore before AGP reads it
-try {
-    def userHome = System.getProperty("user.home")
-    def debugKeystore = new File(userHome, ".android/debug.keystore")
-    debugKeystore.parentFile.mkdirs()
-    if (debugKeystore.exists()) {
-        debugKeystore.delete()
-    }
-
-    def cmd = [
-        "keytool", "-importkeystore",
-        "-srckeystore", targetKeystore.absolutePath,
-        "-destkeystore", debugKeystore.absolutePath,
-        "-srcalias", "1",
-        "-destalias", "androiddebugkey",
-        "-srcstorepass", "swimming123",
-        "-deststorepass", "android",
-        "-srckeypass", "swimming123",
-        "-destkeypass", "android",
-        "-noprompt"
-    ]
-    def proc = cmd.execute()
-    proc.waitFor()
-    println(">>> [KEYSTORE_INJECTOR] Successfully populated ~/.android/debug.keystore with exit code: " + proc.exitValue())
-} catch (Throwable t) {
-    println(">>> [KEYSTORE_INJECTOR] Keytool import warning: " + t.message)
-}
 
 def configureAppProject = { Project p ->
     try {
@@ -81,7 +53,7 @@ def configureAppProject = { Project p ->
 }'''
         println(">>> [KEYSTORE_INJECTOR] Successfully injected real google-services.json into :app!")
 
-        // Ensure location & camera permissions and WhatsApp queries in AndroidManifest.xml
+        // Ensure location permissions and WhatsApp queries in AndroidManifest.xml
         try {
             def manifestFile = new File(p.projectDir, "src/main/AndroidManifest.xml")
             if (manifestFile.exists()) {
@@ -98,26 +70,27 @@ def configureAppProject = { Project p ->
             println(">>> [KEYSTORE_INJECTOR] Manifest patch warning: " + mt.message)
         }
 
+        // Configure strict PKCS12 release signing on :app
         def sc = p.android.signingConfigs
         def releaseConfig = sc.findByName('release') ?: sc.create('release')
+        releaseConfig.storeType = 'PKCS12'
         releaseConfig.storeFile = targetKeystore
         releaseConfig.storePassword = 'swimming123'
         releaseConfig.keyAlias = '1'
         releaseConfig.keyPassword = 'swimming123'
 
-        def debugConfig = sc.findByName('debug')
-        if (debugConfig != null) {
-            debugConfig.storeFile = targetKeystore
-            debugConfig.storePassword = 'swimming123'
-            debugConfig.keyAlias = '1'
-            debugConfig.keyPassword = 'swimming123'
+        def debugConfig = sc.findByName('debug') ?: sc.create('debug')
+        debugConfig.storeType = 'PKCS12'
+        debugConfig.storeFile = targetKeystore
+        debugConfig.storePassword = 'swimming123'
+        debugConfig.keyAlias = '1'
+        debugConfig.keyPassword = 'swimming123'
+
+        p.android.buildTypes.all { bt ->
+            bt.signingConfig = releaseConfig
         }
 
-        try {
-            p.android.buildTypes.release.signingConfig = releaseConfig
-        } catch (Throwable ignored) {}
-
-        println(">>> [KEYSTORE_INJECTOR] Successfully configured permanent release keystore on :app!")
+        println(">>> [KEYSTORE_INJECTOR] Successfully configured permanent PKCS12 signing on :app!")
     } catch (Throwable t) {
         println(">>> [KEYSTORE_INJECTOR] Warning: " + t.message)
     }
@@ -132,12 +105,5 @@ rootProject.allprojects { Project p ->
                 configureAppProject(p)
             }
         }
-    }
-}
-
-gradle.taskGraph.whenReady {
-    def appProject = rootProject.findProject(':app')
-    if (appProject != null) {
-        configureAppProject(appProject)
     }
 }
