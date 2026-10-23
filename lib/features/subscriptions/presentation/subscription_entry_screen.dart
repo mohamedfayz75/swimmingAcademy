@@ -482,6 +482,48 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
       createdBy: staffUid,
     );
 
+    // Check if player already has an active subscription in this group
+    final existingSubs = LocalStore.instance.getSubscriptions();
+    final hasActiveInGroup = existingSubs.any((s) =>
+        s.playerCode.trim().toUpperCase() == _selectedPlayer!.playerCode.trim().toUpperCase() &&
+        s.groupCode.trim().toUpperCase() == _selectedGroup!.groupCode.trim().toUpperCase() &&
+        !s.isExpired);
+
+    if (hasActiveInGroup) {
+      final shouldProceed = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          title: Row(
+            children: [
+              const Icon(Icons.info_outline, color: AppTheme.warningOrange),
+              const SizedBox(width: 8),
+              Text('تجديد اشتراك ساري', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          ),
+          content: Text(
+            'اللاعب «${_selectedPlayer!.playerName}» مقيد بالفعل ولديه اشتراك ساري في مجموعة «${_selectedGroup!.groupCode}».\n\nهل تريد تسجيل هذا كـ (تجديد اشتراك)؟\nسيتم تسجيل الرسوم والحصص دون مضاعفة مقعد اللاعب في المجموعة.',
+            style: GoogleFonts.cairo(fontSize: 13),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: const Text('إلغاء'),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue),
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              child: const Text('تأكيد التجديد', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldProceed != true) {
+        return;
+      }
+    }
+
     try {
       final saved = await ref.read(subscriptionEntryProvider.notifier).submitSubscription(subscription);
       if (!mounted) return;
