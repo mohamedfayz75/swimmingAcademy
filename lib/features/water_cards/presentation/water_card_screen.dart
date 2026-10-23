@@ -654,8 +654,9 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
   Widget build(BuildContext context) {
     final currentUser = ref.watch(currentUserProvider).value;
     final isOwner = currentUser?.role.isOwner ?? false;
+    final canPop = ModalRoute.of(context)?.canPop ?? false;
 
-    return StreamBuilder<List<WaterCardModel>>(
+    final content = StreamBuilder<List<WaterCardModel>>(
       stream: LocalStore.instance.waterCardsStream,
       initialData: LocalStore.instance.getWaterCards(),
       builder: (context, _) {
@@ -678,9 +679,11 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
             final semiPendingCount = LocalStore.instance.getPendingOverdraftSessionsForPool(AppConstants.poolSemiOlympic);
             final recPendingCount = LocalStore.instance.getPendingOverdraftSessionsForPool(AppConstants.poolRecreational);
 
-            return SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
-              child: Column(
+            return Container(
+              color: AppTheme.backgroundLight,
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // Header Banner with Main Add Button
@@ -891,12 +894,30 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                   const SizedBox(height: 40),
                 ],
               ),
-            );
-          },
-        );
-      },
+            ),
+          );
+        },
+      );
+    },
+  );
+
+  if (canPop) {
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundLight,
+      appBar: AppBar(
+        title: Text(
+          'كروت المياة والاستهلاك',
+          style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+        ),
+        backgroundColor: AppTheme.primaryBlue,
+        foregroundColor: Colors.white,
+      ),
+      body: content,
     );
   }
+
+  return content;
+}
 
   // --- كارت المسبح النشط ---
   Widget _buildPoolCardView(WaterCardModel card, {required bool isOwner}) {
