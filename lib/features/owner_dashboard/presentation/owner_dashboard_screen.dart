@@ -7,6 +7,7 @@ import '../../../core/utils/dialogs.dart';
 import '../../../core/utils/formatters.dart';
 import '../../coaches_payroll/presentation/coach_payroll_screen.dart';
 import '../../subscriptions/presentation/subscriptions_list_screen.dart';
+import '../../subscriptions/providers/subscription_provider.dart';
 import '../../water_cards/presentation/water_card_screen.dart';
 import '../models/expense_model.dart';
 import '../providers/dashboard_provider.dart';
@@ -290,12 +291,7 @@ class OwnerDashboardScreen extends ConsumerWidget {
                           amount: acc.totalStampCardRevenues,
                           icon: Icons.badge,
                           color: AppTheme.accentTeal,
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(builder: (_) => const WaterCardScreen()),
-                            );
-                          },
+                          onTap: () => _showStampCardRevenuesSheet(context, ref, acc.monthYear),
                         ),
                       ],
                     ),
@@ -499,5 +495,216 @@ class OwnerDashboardScreen extends ConsumerWidget {
 
     if (isFullWidth) return content;
     return Expanded(child: content);
+  }
+
+  void _showStampCardRevenuesSheet(BuildContext context, WidgetRef ref, String monthYear) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Consumer(
+          builder: (context, ref, _) {
+            final subsAsync = ref.watch(subscriptionsStreamProvider);
+            return Container(
+              height: MediaQuery.of(context).size.height * 0.75,
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+              ),
+              child: Column(
+                children: [
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: AppTheme.accentTeal.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.badge, color: AppTheme.accentTeal, size: 24),
+                            ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  'تفاصيل إيرادات ختم الكروت',
+                                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                                Text(
+                                  'شهر $monthYear',
+                                  style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(ctx),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: subsAsync.when(
+                      data: (subs) {
+                        final stampSubs = subs.where((s) {
+                          if (s.stampCardFee <= 0) return false;
+                          final sDate = s.paymentDate.toDate();
+                          final sMonthYear = '${sDate.month.toString().padLeft(2, '0')}-${sDate.year}';
+                          return sMonthYear == monthYear;
+                        }).toList();
+
+                        final totalAmount = stampSubs.fold<double>(0.0, (sum, s) => sum + s.stampCardFee);
+
+                        if (stampSubs.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.badge_outlined, size: 52, color: Colors.grey.shade400),
+                                const SizedBox(height: 12),
+                                Text(
+                                  'لا توجد رسوم لختم الكروت مسجلة في شهر $monthYear',
+                                  style: GoogleFonts.cairo(color: AppTheme.textMuted, fontSize: 14),
+                                ),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return Column(
+                          children: [
+                            Container(
+                              margin: const EdgeInsets.all(16),
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: AppTheme.accentTeal.withOpacity(0.08),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: AppTheme.accentTeal.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Text(
+                                    'إجمالي رسوم الختم (${stampSubs.length} لاعب)',
+                                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+                                  ),
+                                  Text(
+                                    AppFormatters.formatCurrency(totalAmount),
+                                    style: GoogleFonts.cairo(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 16,
+                                      color: AppTheme.accentTeal,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Expanded(
+                              child: ListView.separated(
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                                itemCount: stampSubs.length,
+                                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                                itemBuilder: (context, index) {
+                                  final s = stampSubs[index];
+                                  return Card(
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                      side: BorderSide(color: Colors.blueGrey.shade100),
+                                    ),
+                                    child: ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor: AppTheme.accentTeal.withOpacity(0.12),
+                                        child: Text(
+                                          '${index + 1}',
+                                          style: GoogleFonts.cairo(
+                                            fontWeight: FontWeight.bold,
+                                            color: AppTheme.accentTeal,
+                                          ),
+                                        ),
+                                      ),
+                                      title: Text(
+                                        s.playerName,
+                                        style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+                                      ),
+                                      subtitle: Text(
+                                        'كود: ${s.playerCode} • ${AppFormatters.formatTimestamp(s.paymentDate)}',
+                                        style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
+                                      ),
+                                      trailing: Text(
+                                        AppFormatters.formatCurrency(s.stampCardFee),
+                                        style: GoogleFonts.cairo(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 15,
+                                          color: AppTheme.accentTeal,
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, _) => Center(child: Text('خطأ في تحميل البيانات: $err')),
+                    ),
+                  ),
+                  SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            Navigator.pop(ctx);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(builder: (_) => const SubscriptionsListScreen()),
+                            );
+                          },
+                          icon: const Icon(Icons.receipt_long),
+                          label: Text(
+                            'فتح سجل الاشتراكات والتحصيل بالكامل',
+                            style: GoogleFonts.cairo(fontWeight: FontWeight.bold),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: AppTheme.primaryBlue),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 }
