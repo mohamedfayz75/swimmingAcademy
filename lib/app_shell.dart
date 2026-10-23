@@ -342,43 +342,6 @@ class _AppShellState extends ConsumerState<AppShell> {
               ),
             ],
 
-            const Divider(thickness: 1.5),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              color: AppTheme.primaryBlue.withOpacity(0.08),
-              child: Row(
-                children: [
-                  const Icon(Icons.security_update_good, size: 16, color: AppTheme.primaryBlue),
-                  const SizedBox(width: 6),
-                  Text(
-                    'أمان وحفظ البيانات والنسخ الاحتياطي',
-                    style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
-                  ),
-                ],
-              ),
-            ),
-            ListTile(
-              leading: const Icon(Icons.backup_rounded, color: AppTheme.primaryBlue),
-              title: Text('النسخ الاحتياطي واسترجاع البيانات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-              subtitle: Text('نسخ كود البيانات بالكامل أو استرجاعه في أي وقت', style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted)),
-              onTap: () {
-                Navigator.pop(context);
-                _showBackupRestoreDialog(context);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.save_rounded, color: AppTheme.successGreen),
-              title: Text('تثبيت وحفظ جميع البيانات الآن 💾', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, color: AppTheme.successGreen)),
-              subtitle: Text('حفظ فوري وشامل للاعبين والاشتراكات والمجموعات', style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted)),
-              onTap: () async {
-                Navigator.pop(context);
-                await LocalStore.instance.saveAllExplicitly();
-                if (mounted) {
-                  AppDialogs.showSuccessSnackBar(context, '💾 تم حفظ وتثبيت جميع اللاعبين والاشتراكات والمجموعات بنجاح في الذاكرة الدائمة!');
-                }
-              },
-            ),
-
             const Divider(),
 
             ListTile(
