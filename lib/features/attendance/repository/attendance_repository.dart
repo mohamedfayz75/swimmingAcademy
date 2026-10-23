@@ -113,7 +113,7 @@ class AttendanceRepository {
     final now = DateTime.now();
     return _store.attendanceStream.map((list) {
       return list.where((a) {
-        final d = a.attendanceDate.toDate();
+        final d = a.timestamp.toDate();
         return d.year == now.year && d.month == now.month && d.day == now.day;
       }).toList();
     });
