@@ -1404,6 +1404,8 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
   // --- نافذة أرشيف وسجل كروت المياة السابقة ---
   void _showCardsArchiveDialog() {
     String selectedFilter = 'all'; // 'all', semi, rec, 'depleted', 'active'
+    DateTime currentArchiveMonth = DateTime.now();
+    bool filterByMonth = true;
 
     showModalBottomSheet(
       context: context,
@@ -1412,8 +1414,19 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
       builder: (ctx) => StatefulBuilder(
         builder: (context, setModalState) {
           final allCards = LocalStore.instance.getWaterCards();
+          final selectedMonthYear =
+              '${currentArchiveMonth.month.toString().padLeft(2, '0')}-${currentArchiveMonth.year}';
 
-          final filteredCards = allCards.where((card) {
+          final monthFilteredCards = allCards.where((card) {
+            if (!filterByMonth) return true;
+            final cardDate = card.cardDate.toDate();
+            final cardMonthYear =
+                '${cardDate.month.toString().padLeft(2, '0')}-${cardDate.year}';
+            return card.monthlyClosingRef == selectedMonthYear ||
+                cardMonthYear == selectedMonthYear;
+          }).toList();
+
+          final filteredCards = monthFilteredCards.where((card) {
             if (selectedFilter == 'all') return true;
             if (selectedFilter == AppConstants.poolSemiOlympic) return card.poolType == AppConstants.poolSemiOlympic;
             if (selectedFilter == AppConstants.poolRecreational) return card.poolType == AppConstants.poolRecreational;
@@ -1422,11 +1435,17 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
             return true;
           }).toList();
 
-          // Statistics
-          final totalCost = allCards.fold<double>(0.0, (acc, c) => acc + c.cardPrice);
-          final totalSessionsSum = allCards.fold<int>(0, (acc, c) => acc + c.totalSessions);
-          final usedSessionsSum = allCards.fold<int>(0, (acc, c) => acc + c.usedSessions);
+          // Statistics for the filtered month view
+          final totalCost = monthFilteredCards.fold<double>(0.0, (acc, c) => acc + c.cardPrice);
+          final totalSessionsSum = monthFilteredCards.fold<int>(0, (acc, c) => acc + c.totalSessions);
+          final usedSessionsSum = monthFilteredCards.fold<int>(0, (acc, c) => acc + c.usedSessions);
           final remainingSessionsSum = totalSessionsSum - usedSessionsSum;
+
+          void changeArchiveMonth(int delta) {
+            setModalState(() {
+              currentArchiveMonth = DateTime(currentArchiveMonth.year, currentArchiveMonth.month + delta, 1);
+            });
+          }
 
           return Container(
             height: MediaQuery.of(context).size.height * 0.88,
@@ -1486,13 +1505,84 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                 ),
                 const Divider(height: 1),
 
+                // شريط تصفح الأرشيف بالشهور
+                Container(
+                  color: AppTheme.primaryBlue.withOpacity(0.04),
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.chevron_left, color: AppTheme.primaryBlue, size: 24),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => changeArchiveMonth(-1),
+                            tooltip: 'الشهر السابق',
+                          ),
+                          const SizedBox(width: 8),
+                          InkWell(
+                            onTap: () async {
+                              final picked = await showDatePicker(
+                                context: context,
+                                initialDate: currentArchiveMonth,
+                                firstDate: DateTime(2020),
+                                lastDate: DateTime(2035),
+                                helpText: 'اختر شهر الأرشيف',
+                              );
+                              if (picked != null) {
+                                setModalState(() => currentArchiveMonth = DateTime(picked.year, picked.month, 1));
+                              }
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: AppTheme.primaryBlue.withOpacity(0.3)),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.calendar_month, size: 16, color: AppTheme.primaryBlue),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    filterByMonth ? 'كروت شهر: $selectedMonthYear' : 'عرض أرشيف كل الشهور',
+                                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryBlue),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          IconButton(
+                            icon: const Icon(Icons.chevron_right, color: AppTheme.primaryBlue, size: 24),
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(),
+                            onPressed: () => changeArchiveMonth(1),
+                            tooltip: 'الشهر التالي',
+                          ),
+                        ],
+                      ),
+                      FilterChip(
+                        label: Text(filterByMonth ? 'الشهر المحدد' : 'كل الشهور', style: GoogleFonts.cairo(fontSize: 11)),
+                        selected: !filterByMonth,
+                        selectedColor: AppTheme.primaryBlue.withOpacity(0.2),
+                        onSelected: (val) => setModalState(() => filterByMonth = !val),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const Divider(height: 1),
+
                 // ملخص إحصائيات الأرشيف
                 Container(
                   color: AppTheme.backgroundLight,
                   padding: const EdgeInsets.all(12),
                   child: Row(
                     children: [
-                      _buildArchiveStat('إجمالي الكروت', '${allCards.length}', AppTheme.primaryBlue),
+                      _buildArchiveStat('إجمالي الكروت', '${monthFilteredCards.length}', AppTheme.primaryBlue),
                       const SizedBox(width: 8),
                       _buildArchiveStat('إجمالي المصروفات', '${totalCost.toStringAsFixed(0)} ج.م', AppTheme.accentTeal),
                       const SizedBox(width: 8),
@@ -1509,7 +1599,7 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   child: Row(
                     children: [
-                      _buildFilterChip('الكل (${allCards.length})', 'all', selectedFilter, (val) => setModalState(() => selectedFilter = val)),
+                      _buildFilterChip('الكل (${monthFilteredCards.length})', 'all', selectedFilter, (val) => setModalState(() => selectedFilter = val)),
                       _buildFilterChip('🏊 نصف أولمبي', AppConstants.poolSemiOlympic, selectedFilter, (val) => setModalState(() => selectedFilter = val)),
                       _buildFilterChip('🏖️ ترفيهي', AppConstants.poolRecreational, selectedFilter, (val) => setModalState(() => selectedFilter = val)),
                       _buildFilterChip('🔴 منتهية', 'depleted', selectedFilter, (val) => setModalState(() => selectedFilter = val)),
