@@ -418,8 +418,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     Text(
-                      'Swimming World Academy System',
-                      style: GoogleFonts.cairo(fontSize: 13, color: AppTheme.textMuted),
+                      'فرع المشاة (S.W Academy)',
+                      style: GoogleFonts.cairo(fontSize: 13, color: AppTheme.textMuted, fontWeight: FontWeight.w600),
                     ),
 
                     const SizedBox(height: 32),
@@ -429,9 +429,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       controller: _emailController,
                       keyboardType: TextInputType.emailAddress,
                       decoration: const InputDecoration(
-                        labelText: 'البريد الإلكتروني',
-                        hintText: 'مثال: owner أو staff أو إيميلك',
-                        prefixIcon: Icon(Icons.email, color: AppTheme.primaryBlue),
+                        labelText: 'البريد الإلكتروني أو اسم المستخدم',
+                        hintText: 'أدخل اسم المستخدم أو البريد الإلكتروني',
+                        prefixIcon: Icon(Icons.person_outline, color: AppTheme.primaryBlue),
                       ),
                     ),
                     const SizedBox(height: 16),
