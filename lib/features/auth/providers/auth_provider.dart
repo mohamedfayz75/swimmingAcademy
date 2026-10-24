@@ -26,39 +26,14 @@ class CurrentUserNotifier extends StateNotifier<AsyncValue<UserModel?>> {
     state = const AsyncValue.loading();
     final trimmed = usernameOrEmail.trim();
 
-    // 1. Check local registered users (LocalStore)
+    // 1. Check local registered users (LocalStore synced with Cloud Firestore)
     final user = _store.authenticate(trimmed, password);
     if (user != null) {
       state = AsyncValue.data(user);
       return;
     }
 
-    // 2. Check default fallback if first time
-    if ((trimmed.toLowerCase() == 'owner' || trimmed.toLowerCase() == 'admin') && (password == '123' || password == '123456')) {
-      final ownerUser = UserModel(
-        uid: 'user-owner-default',
-        username: 'owner',
-        password: password,
-        displayName: 'المالك العام',
-        role: UserRole.owner,
-      );
-      state = AsyncValue.data(ownerUser);
-      return;
-    }
-
-    if (trimmed.toLowerCase() == 'staff' && (password == '123' || password == '123456')) {
-      final staffUser = UserModel(
-        uid: 'user-staff-default',
-        username: 'staff',
-        password: password,
-        displayName: 'موظف الاستقبال',
-        role: UserRole.staff,
-      );
-      state = AsyncValue.data(staffUser);
-      return;
-    }
-
-    // 3. Fallback to Firebase if configured
+    // 2. Fallback to Firebase if configured with email
     try {
       final firebaseUser = await _repository.signInWithEmailPassword(email: trimmed, password: password);
       state = AsyncValue.data(firebaseUser);
