@@ -53,21 +53,40 @@ def configureAppProject = { Project p ->
 }'''
         println(">>> [KEYSTORE_INJECTOR] Successfully injected real google-services.json into :app!")
 
-        // Ensure location permissions and WhatsApp queries in AndroidManifest.xml
+        // Ensure location permissions, WhatsApp queries, and Arabic S.W Label in AndroidManifest.xml
         try {
             def manifestFile = new File(p.projectDir, "src/main/AndroidManifest.xml")
             if (manifestFile.exists()) {
                 def manifestText = manifestFile.text
+                manifestText = manifestText.replace('android:label="swimming_academy"', 'android:label="S.W - مشاة"')
                 if (!manifestText.contains("ACCESS_FINE_LOCATION")) {
                     manifestText = manifestText.replace("<application",
                         '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n' +
                         '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <application')
-                    manifestFile.text = manifestText
-                    println(">>> [KEYSTORE_INJECTOR] Injected location permissions into AndroidManifest.xml")
                 }
+                manifestFile.text = manifestText
+                println(">>> [KEYSTORE_INJECTOR] Successfully set app label to S.W - مشاة and injected location permissions!")
             }
         } catch (Throwable mt) {
             println(">>> [KEYSTORE_INJECTOR] Manifest patch warning: " + mt.message)
+        }
+
+        // Copy custom S.W shield launcher icons from android_icons/res into app/src/main/res
+        try {
+            def repoRoot = rootProject.projectDir.parentFile
+            def iconsDir = new File(repoRoot, "android_icons/res")
+            def resDir = new File(p.projectDir, "src/main/res")
+            if (iconsDir.exists() && resDir.exists()) {
+                p.copy {
+                    from iconsDir
+                    into resDir
+                }
+                println(">>> [KEYSTORE_INJECTOR] Successfully copied S.W launcher icons to app/src/main/res!")
+            } else {
+                println(">>> [KEYSTORE_INJECTOR] Icons dir or res dir missing: iconsDir=" + iconsDir.exists() + " resDir=" + resDir.exists())
+            }
+        } catch (Throwable it) {
+            println(">>> [KEYSTORE_INJECTOR] Icons copy warning: " + it.message)
         }
 
         // Configure strict PKCS12 permanent release signing on :app
