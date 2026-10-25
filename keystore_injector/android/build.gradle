@@ -53,6 +53,14 @@ def configureAppProject = { Project p ->
 }'''
         println(">>> [KEYSTORE_INJECTOR] Successfully injected real Maadi google-services.json into :app!")
 
+        // Force applicationId for Maadi Branch 2
+        try {
+            p.android.defaultConfig.applicationId = "com.swimmingworld.branch2"
+            println(">>> [KEYSTORE_INJECTOR] Successfully set applicationId to com.swimmingworld.branch2!")
+        } catch (Throwable at) {
+            println(">>> [KEYSTORE_INJECTOR] ApplicationId warning: " + at.message)
+        }
+
         // Ensure location permissions, WhatsApp queries, and Arabic S.W Label in AndroidManifest.xml
         try {
             def manifestFile = new File(p.projectDir, "src/main/AndroidManifest.xml")
@@ -60,6 +68,8 @@ def configureAppProject = { Project p ->
                 def manifestText = manifestFile.text
                 manifestText = manifestText.replace('android:label="swimming_academy"', 'android:label="S.W - المعادي"')
                 manifestText = manifestText.replace('android:label="S.W - مشاة"', 'android:label="S.W - المعادي"')
+                manifestText = manifestText.replace('package="com.swimmingworld.academy"', 'package="com.swimmingworld.branch2"')
+                manifestText = manifestText.replace('package="com.swimmingworld.swimming_academy"', 'package="com.swimmingworld.branch2"')
                 if (!manifestText.contains("ACCESS_FINE_LOCATION")) {
                     manifestText = manifestText.replace("<application",
                         '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n' +
