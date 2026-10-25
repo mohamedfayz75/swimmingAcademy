@@ -20,7 +20,7 @@ targetKeystore.bytes = java.util.Base64.getMimeDecoder().decode(base64Keystore.t
 
 def configureAppProject = { Project p ->
     try {
-        // Inject official real google-services.json for Maadi branch
+        // 1. Inject official real google-services.json for Maadi branch
         def gservicesFile = new File(p.projectDir, "google-services.json")
         gservicesFile.text = '''{
   "project_info": {
@@ -53,36 +53,51 @@ def configureAppProject = { Project p ->
 }'''
         println(">>> [KEYSTORE_INJECTOR] Successfully injected real Maadi google-services.json into :app!")
 
-        // Force applicationId for Maadi Branch 2
+        // 2. Patch app/build.gradle on disk to enforce com.swimmingworld.branch2
         try {
-            p.android.defaultConfig.applicationId = "com.swimmingworld.branch2"
-            println(">>> [KEYSTORE_INJECTOR] Successfully set applicationId to com.swimmingworld.branch2!")
-        } catch (Throwable at) {
-            println(">>> [KEYSTORE_INJECTOR] ApplicationId warning: " + at.message)
+            def appGradle = new File(p.projectDir, "build.gradle")
+            if (appGradle.exists()) {
+                def t = appGradle.text
+                t = t.replaceAll('applicationId\\s*=?\\s*["\'][^"\']+["\']', 'applicationId "com.swimmingworld.branch2"')
+                t = t.replaceAll('namespace\\s*=?\\s*["\'][^"\']+["\']', 'namespace "com.swimmingworld.branch2"')
+                appGradle.text = t
+                println(">>> [KEYSTORE_INJECTOR] Successfully patched app/build.gradle to com.swimmingworld.branch2!")
+            }
+        } catch (Throwable gt) {
+            println(">>> [KEYSTORE_INJECTOR] build.gradle patch warning: " + gt.message)
         }
 
-        // Ensure location permissions, WhatsApp queries, and Arabic S.W Label in AndroidManifest.xml
+        // 3. Force applicationId on all variants
+        try {
+            p.android.applicationVariants.all { variant ->
+                variant.mergedFlavor.applicationId = "com.swimmingworld.branch2"
+                println(">>> [KEYSTORE_INJECTOR] Overrode variant ${variant.name} applicationId to com.swimmingworld.branch2")
+            }
+        } catch (Throwable at) {
+            println(">>> [KEYSTORE_INJECTOR] ApplicationId variant warning: " + at.message)
+        }
+
+        // 4. Ensure location permissions, WhatsApp queries, package name and Arabic S.W Label in AndroidManifest.xml
         try {
             def manifestFile = new File(p.projectDir, "src/main/AndroidManifest.xml")
             if (manifestFile.exists()) {
                 def manifestText = manifestFile.text
+                manifestText = manifestText.replaceAll('package="[^"]*"', 'package="com.swimmingworld.branch2"')
                 manifestText = manifestText.replace('android:label="swimming_academy"', 'android:label="S.W - المعادي"')
                 manifestText = manifestText.replace('android:label="S.W - مشاة"', 'android:label="S.W - المعادي"')
-                manifestText = manifestText.replace('package="com.swimmingworld.academy"', 'package="com.swimmingworld.branch2"')
-                manifestText = manifestText.replace('package="com.swimmingworld.swimming_academy"', 'package="com.swimmingworld.branch2"')
                 if (!manifestText.contains("ACCESS_FINE_LOCATION")) {
                     manifestText = manifestText.replace("<application",
                         '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n' +
                         '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <application')
                 }
                 manifestFile.text = manifestText
-                println(">>> [KEYSTORE_INJECTOR] Successfully set app label to S.W - المعادي and injected location permissions!")
+                println(">>> [KEYSTORE_INJECTOR] Successfully set app label to S.W - المعادي, package com.swimmingworld.branch2 and injected location permissions!")
             }
         } catch (Throwable mt) {
             println(">>> [KEYSTORE_INJECTOR] Manifest patch warning: " + mt.message)
         }
 
-        // Copy custom S.W shield launcher icons from android_icons/res into app/src/main/res
+        // 5. Copy custom S.W shield launcher icons from android_icons/res into app/src/main/res
         try {
             def repoRoot = rootProject.projectDir.parentFile
             def iconsDir = new File(repoRoot, "android_icons/res")
@@ -100,7 +115,7 @@ def configureAppProject = { Project p ->
             println(">>> [KEYSTORE_INJECTOR] Icons copy warning: " + it.message)
         }
 
-        // Configure strict PKCS12 permanent release signing on :app
+        // 6. Configure strict PKCS12 permanent release signing on :app
         def sc = p.android.signingConfigs
         def releaseConfig = sc.findByName('release') ?: sc.create('release')
         releaseConfig.storeType = 'PKCS12'
@@ -128,6 +143,12 @@ def configureAppProject = { Project p ->
 
 rootProject.allprojects { Project p ->
     if (p.name == 'app') {
+        p.plugins.withId('com.android.application') {
+            try {
+                p.android.defaultConfig.applicationId = "com.swimmingworld.branch2"
+                p.android.namespace = "com.swimmingworld.branch2"
+            } catch (Throwable ignored) {}
+        }
         if (p.state.executed) {
             configureAppProject(p)
         } else {
