@@ -410,15 +410,15 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'أكاديمية عالم السباحة',
+                      'S.W - المعادي',
                       style: GoogleFonts.cairo(
-                        fontSize: 22,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: AppTheme.primaryBlue,
                       ),
                     ),
                     Text(
-                      'فرع المشاة (S.W Academy)',
+                      'أكاديمية عالم السباحة - فرع المعادي',
                       style: GoogleFonts.cairo(fontSize: 13, color: AppTheme.textMuted, fontWeight: FontWeight.w600),
                     ),
 
