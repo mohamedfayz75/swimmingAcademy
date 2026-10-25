@@ -53,7 +53,7 @@ def configureAppProject = { Project p ->
 }'''
         println(">>> [KEYSTORE_INJECTOR] Successfully injected real Maadi google-services.json into :app!")
 
-        // 1.1 Create com.swimmingworld.branch2.MainActivity in Kotlin and Java source trees
+        // 1.1 Create com.swimmingworld.branch2.MainActivity in Kotlin source tree
         try {
             def kotlinDir = new File(p.projectDir, "src/main/kotlin/com/swimmingworld/branch2")
             kotlinDir.mkdirs()
@@ -66,18 +66,6 @@ class MainActivity: FlutterActivity() {
 }
 '''
             println(">>> [KEYSTORE_INJECTOR] Created Kotlin MainActivity at " + ktFile.absolutePath)
-
-            def javaDir = new File(p.projectDir, "src/main/java/com/swimmingworld/branch2")
-            javaDir.mkdirs()
-            def jFile = new File(javaDir, "MainActivity.java")
-            jFile.text = '''package com.swimmingworld.branch2;
-
-import io.flutter.embedding.android.FlutterActivity;
-
-public class MainActivity extends FlutterActivity {
-}
-'''
-            println(">>> [KEYSTORE_INJECTOR] Created Java MainActivity at " + jFile.absolutePath)
         } catch (Throwable actErr) {
             println(">>> [KEYSTORE_INJECTOR] Activity creation notice: " + actErr.message)
         }
