@@ -21,12 +21,10 @@ class AppConstants {
   static const String expensesCollection = 'expenses';
   static const String generalAccountingCollection = 'general_accounting';
 
-  // Pool Types for Water Cards
+  // Pool Types for Water Cards (فرع المعادي: حمام سباحة واحد فقط)
   static const String poolSemiOlympic = 'نصف أولمبي';
-  static const String poolRecreational = 'ترفيهي';
   static const List<String> poolTypes = [
     poolSemiOlympic,
-    poolRecreational,
   ];
 
   // Group Types and Max Capacities
