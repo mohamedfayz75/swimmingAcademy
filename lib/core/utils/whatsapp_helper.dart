@@ -123,7 +123,7 @@ class WhatsAppHelper {
         ? '✅ *حالة السداد:* مدفوع بالكامل (خالص)'
         : '⚠️ *حالة السداد:* متبقي ${AppFormatters.formatCurrency(remaining)}';
 
-    return '🏊‍♂️ *أكاديمية عالم السباحة (دار المشاة)* 🏊‍♂️\n'
+    return '🏊‍♂️ *أكاديمية عالم السباحة (فندق اللؤلؤة المعادي)* 🏊‍♂️\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
         '$title\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
@@ -148,7 +148,7 @@ class WhatsAppHelper {
 
   /// Generate WhatsApp message for new player registration
   static String buildPlayerWelcomeMessage(PlayerModel player) {
-    return '🏊‍♂️ *أكاديمية عالم السباحة (دار المشاة)* 🏊‍♂️\n'
+    return '🏊‍♂️ *أكاديمية عالم السباحة (فندق اللؤلؤة المعادي)* 🏊‍♂️\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
         '🎉 *أهلاً بك في أسرة الأكاديمية!* 🎉\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
