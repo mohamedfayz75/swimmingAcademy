@@ -102,7 +102,7 @@ class AppDialogs {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF002244), Color(0xFF004488)],
+                        colors: [Color(0xFF006978), Color(0xFF008E9B)],
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,
                       ),
@@ -128,7 +128,7 @@ class AppDialogs {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'أكاديمية عالم السباحة (دار المشاة)',
+                                  'أكاديمية عالم السباحة (فندق اللؤلؤة المعادي)',
                                   style: GoogleFonts.cairo(
                                     color: Colors.white,
                                     fontSize: 14,
