@@ -9,6 +9,7 @@ import '../../features/groups/models/group_model.dart';
 import '../../features/owner_dashboard/models/accounting_model.dart';
 import '../../features/owner_dashboard/models/expense_model.dart';
 import '../../features/owner_dashboard/models/payroll_model.dart';
+import '../../features/coaches_payroll/models/daily_coach_session_model.dart';
 import '../../features/players/models/player_model.dart';
 import '../../features/subscriptions/models/subscription_model.dart';
 import '../../features/water_cards/models/water_card_model.dart';
@@ -34,6 +35,7 @@ class LocalStore {
   final List<WaterCardModel> _waterCards = [];
   final List<CoachModel> _coaches = [];
   final List<PayrollModel> _payrolls = [];
+  final List<DailyCoachSessionModel> _dailyCoachSessions = [];
   final List<ExpenseModel> _expenses = [];
   final List<PoolOverdraftNoteModel> _poolOverdraftNotes = [];
 
@@ -48,6 +50,7 @@ class LocalStore {
   final _coachesController = StreamController<List<CoachModel>>.broadcast();
   final _expensesController = StreamController<List<ExpenseModel>>.broadcast();
   final _payrollsController = StreamController<List<PayrollModel>>.broadcast();
+  final _dailyCoachSessionsController = StreamController<List<DailyCoachSessionModel>>.broadcast();
 
   // Streams that emit current cached data immediately to any new listener
   Stream<List<UserModel>> get usersStream async* {
@@ -98,6 +101,11 @@ class LocalStore {
   Stream<List<PayrollModel>> get payrollsStream async* {
     yield List.unmodifiable(_payrolls);
     yield* _payrollsController.stream;
+  }
+
+  Stream<List<DailyCoachSessionModel>> get dailyCoachSessionsStream async* {
+    yield List.unmodifiable(_dailyCoachSessions);
+    yield* _dailyCoachSessionsController.stream;
   }
 
   Future<void> init() async {
@@ -243,6 +251,22 @@ class LocalStore {
           }
         }
 
+        // 8b. Daily Coach Sessions
+        final dailySessionsJson = prefs.getString('sw_daily_coach_sessions');
+        if (dailySessionsJson != null) {
+          try {
+            final List list = jsonDecode(dailySessionsJson);
+            _dailyCoachSessions.clear();
+            for (final item in list) {
+              try {
+                _dailyCoachSessions.add(DailyCoachSessionModel.fromMap(Map<String, dynamic>.from(item)));
+              } catch (_) {}
+            }
+          } catch (e) {
+            debugPrint('Error decoding sw_daily_coach_sessions: $e');
+          }
+        }
+
         // 9. Expenses
         final expJson = prefs.getString('sw_expenses');
         if (expJson != null) {
@@ -322,6 +346,7 @@ class LocalStore {
         prefs.setString('sw_pool_overdraft_notes', jsonEncode(_poolOverdraftNotes.map((n) => n.toMap()).toList())),
         prefs.setString('sw_coaches', jsonEncode(_coaches.map((c) => c.toMap()).toList())),
         prefs.setString('sw_payrolls', jsonEncode(_payrolls.map((p) => p.toMap()).toList())),
+        prefs.setString('sw_daily_coach_sessions', jsonEncode(_dailyCoachSessions.map((s) => s.toMap()).toList())),
         prefs.setString('sw_expenses', jsonEncode(_expenses.map((e) => e.toMap()).toList())),
         prefs.setString('sw_users', jsonEncode(_users.map((u) => u.toMap()).toList())),
       ]);
@@ -752,6 +777,7 @@ class LocalStore {
     _coachesController.add(List.unmodifiable(_coaches));
     _expensesController.add(List.unmodifiable(_expenses));
     _payrollsController.add(List.unmodifiable(_payrolls));
+    _dailyCoachSessionsController.add(List.unmodifiable(_dailyCoachSessions));
   }
 
   // --- Players ---
@@ -1204,6 +1230,98 @@ class LocalStore {
     CloudSyncService.instance.deleteCoach(coachId);
   }
 
+  // --- Daily Coach Sessions & Payroll Management ---
+  List<DailyCoachSessionModel> getDailyCoachSessions({String? coachId, String? monthYear}) {
+    return _dailyCoachSessions.where((s) {
+      if (coachId != null && s.coachId != coachId) return false;
+      if (monthYear != null && s.monthYear != monthYear) return false;
+      return true;
+    }).toList();
+  }
+
+  void addDailyCoachSession(DailyCoachSessionModel session) {
+    _dailyCoachSessions.insert(0, session);
+    _dailyCoachSessionsController.add(List.unmodifiable(_dailyCoachSessions));
+    _recalculateCoachMonthlyPayroll(session.coachId, session.monthYear);
+    _saveAll();
+  }
+
+  void deleteDailyCoachSession(String id) {
+    final index = _dailyCoachSessions.indexWhere((s) => s.id == id);
+    if (index != -1) {
+      final session = _dailyCoachSessions[index];
+      _dailyCoachSessions.removeAt(index);
+      _dailyCoachSessionsController.add(List.unmodifiable(_dailyCoachSessions));
+      _recalculateCoachMonthlyPayroll(session.coachId, session.monthYear);
+      _saveAll();
+    }
+  }
+
+  void _recalculateCoachMonthlyPayroll(String coachId, String monthYear) {
+    final sessions = _dailyCoachSessions.where((s) => s.coachId == coachId && s.monthYear == monthYear).toList();
+    int s1 = 0;
+    int s2 = 0;
+    int s3 = 0;
+
+    for (final s in sessions) {
+      final day = s.date.toDate().day;
+      if (day <= 10) {
+        s1 += s.sessionCount;
+      } else if (day <= 20) {
+        s2 += s.sessionCount;
+      } else {
+        s3 += s.sessionCount;
+      }
+    }
+    final total = s1 + s2 + s3;
+
+    final pIndex = _payrolls.indexWhere((p) => p.coachId == coachId && p.monthYear == monthYear);
+    if (pIndex != -1) {
+      final existing = _payrolls[pIndex];
+      _payrolls[pIndex] = PayrollModel(
+        coachId: existing.coachId,
+        coachName: existing.coachName,
+        sessions1To10: s1,
+        sessions11To20: s2,
+        sessions21To31: s3,
+        totalSessions: total,
+        sessionRate: existing.sessionRate,
+        advancePayments: existing.advancePayments,
+        paymentStatus: existing.paymentStatus,
+        payoutMethod: existing.payoutMethod,
+        payoutNotes: existing.payoutNotes,
+        payoutDate: existing.payoutDate,
+        monthYear: existing.monthYear,
+      );
+      CloudSyncService.instance.pushPayroll(_payrolls[pIndex]);
+    } else {
+      final coach = _coaches.firstWhere(
+        (c) => c.coachId == coachId,
+        orElse: () => CoachModel(coachId: coachId, coachName: 'كابتن', phoneNumber: ''),
+      );
+      final newPayroll = PayrollModel(
+        coachId: coachId,
+        coachName: coach.coachName,
+        sessions1To10: s1,
+        sessions11To20: s2,
+        sessions21To31: s3,
+        totalSessions: total,
+        sessionRate: 0.0,
+        payoutDate: Timestamp.now(),
+        monthYear: monthYear,
+      );
+      _payrolls.add(newPayroll);
+      CloudSyncService.instance.pushPayroll(newPayroll);
+    }
+    _payrollsController.add(List.unmodifiable(_payrolls));
+  }
+
+  void deletePayroll(String coachId, String monthYear) {
+    _payrolls.removeWhere((p) => p.coachId == coachId && p.monthYear == monthYear);
+    _payrollsController.add(List.unmodifiable(_payrolls));
+    _saveAll();
+  }
+
   void logDailyCoachSession(String coachId, int sessionsCount, String monthYear) {
     final index = _payrolls.indexWhere((p) => p.coachId == coachId && p.monthYear == monthYear);
     if (index != -1) {
@@ -1216,7 +1334,7 @@ class LocalStore {
         coachId: coachId,
         coachName: coach.coachName,
         totalSessions: sessionsCount,
-        sessionRate: 100.0,
+        sessionRate: 0.0,
         payoutDate: Timestamp.now(),
         monthYear: monthYear,
       );
@@ -1300,19 +1418,33 @@ class LocalStore {
 
     double payrollTotal = 0;
     double allTimePayroll = 0;
-    for (final p in _payrolls.where((p) => p.isPaid)) {
-      allTimePayroll += p.netPayable;
+    for (final p in _payrolls) {
+      final isPaid = p.isPaid || p.paymentStatus == 'تم الصرف' || p.paymentStatus == 'تم القبض';
+      final double coachCashOutflow = isPaid
+          ? (p.netPayable + p.advancePayments)
+          : p.advancePayments;
+
+      allTimePayroll += coachCashOutflow;
       if (p.monthYear == monthYear) {
-        payrollTotal += p.netPayable;
+        payrollTotal += coachCashOutflow;
       }
     }
 
-    double generalExpensesTotal = 0;
+    double waterCardExpenses = 0;
+    double otherExpenses = 0;
     double allTimeExpenses = 0;
     for (final e in _expenses) {
       allTimeExpenses += e.amount;
+      final isWater = e.category.trim() == 'كروت مياة' ||
+          e.category.trim() == 'كروت مياه' ||
+          e.category.toLowerCase().contains('water');
+
       if (e.monthYear == monthYear) {
-        generalExpensesTotal += e.amount;
+        if (isWater) {
+          waterCardExpenses += e.amount;
+        } else {
+          otherExpenses += e.amount;
+        }
       }
     }
 
@@ -1323,8 +1455,8 @@ class LocalStore {
       totalSubscriptionRevenues: subRevenues,
       totalStampCardRevenues: stampRevenues,
       totalCoachPayroll: payrollTotal,
-      totalWaterCardExpenses: 0,
-      otherExpenses: generalExpensesTotal,
+      totalWaterCardExpenses: waterCardExpenses,
+      otherExpenses: otherExpenses,
       allTimeCumulativeVault: allTimeVault,
     );
   }
