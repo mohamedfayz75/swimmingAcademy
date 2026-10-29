@@ -763,19 +763,73 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
                 data: (groups) {
                   return DropdownButtonFormField<GroupModel>(
                     value: _selectedGroup,
+                    itemHeight: null,
+                    isExpanded: true,
                     decoration: InputDecoration(
                       labelText: _isSplitSchedule ? 'المجموعة الأولى (اليوم الأول)' : 'اختر المجموعة المتاحة',
                       prefixIcon: const Icon(Icons.pool, color: AppTheme.primaryBlue),
                     ),
+                    selectedItemBuilder: (context) {
+                      return groups.map((g) {
+                        return Text(
+                          '${g.groupCode} - ${g.coachName} (${g.trainingDays.join("، ")} - ${g.sessionTime}) [متاح ${g.availableSeats}]',
+                          style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                          overflow: TextOverflow.ellipsis,
+                        );
+                      }).toList();
+                    },
                     items: groups.map((g) {
                       final isFull = !g.isAvailable;
                       return DropdownMenuItem<GroupModel>(
                         value: isFull ? null : g,
                         enabled: !isFull,
-                        child: Text(
-                          '${g.groupCode} - ${g.coachName} (${g.trainingType}) [متاح ${g.availableSeats}]',
-                          style: GoogleFonts.cairo(fontSize: 13, color: isFull ? Colors.grey : AppTheme.textDark),
-                          overflow: TextOverflow.ellipsis,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      '${g.groupCode} - كابتن ${g.coachName}',
+                                      style: GoogleFonts.cairo(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: isFull ? Colors.grey : AppTheme.primaryBlue,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: isFull ? AppTheme.errorRed.withOpacity(0.12) : AppTheme.successGreen.withOpacity(0.12),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      isFull ? 'مكتملة' : 'متاح ${g.availableSeats}',
+                                      style: GoogleFonts.cairo(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: isFull ? AppTheme.errorRed : AppTheme.successGreen,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                '🗓️ ${g.trainingDays.join("، ")} | ⏰ ${g.sessionTime}',
+                                style: GoogleFonts.cairo(
+                                  fontSize: 11,
+                                  color: isFull ? Colors.grey : Colors.blueGrey.shade700,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     }).toList(),
@@ -796,16 +850,73 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
                   data: (groups) {
                     return DropdownButtonFormField<GroupModel>(
                       value: _selectedSecondaryGroup,
+                      itemHeight: null,
+                      isExpanded: true,
                       decoration: const InputDecoration(
                         labelText: 'المجموعة الثانية (اليوم الثاني المخصص)',
                         prefixIcon: Icon(Icons.add_circle_outline, color: AppTheme.accentTeal),
                       ),
+                      selectedItemBuilder: (context) {
+                        return groups.map((g) {
+                          return Text(
+                            '${g.groupCode} - ${g.coachName} (${g.trainingDays.join("، ")} - ${g.sessionTime}) [متاح ${g.availableSeats}]',
+                            style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.textDark),
+                            overflow: TextOverflow.ellipsis,
+                          );
+                        }).toList();
+                      },
                       items: groups.map((g) {
+                        final isFull = !g.isAvailable;
                         return DropdownMenuItem<GroupModel>(
-                          value: g,
-                          child: Text(
-                            '${g.groupCode} - ${g.coachName} (${g.trainingType}) [متاح ${g.availableSeats}]',
-                            style: GoogleFonts.cairo(fontSize: 13),
+                          value: isFull ? null : g,
+                          enabled: !isFull,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        '${g.groupCode} - كابتن ${g.coachName}',
+                                        style: GoogleFonts.cairo(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.bold,
+                                          color: isFull ? Colors.grey : AppTheme.primaryBlue,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                      decoration: BoxDecoration(
+                                        color: isFull ? AppTheme.errorRed.withOpacity(0.12) : AppTheme.successGreen.withOpacity(0.12),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Text(
+                                        isFull ? 'مكتملة' : 'متاح ${g.availableSeats}',
+                                        style: GoogleFonts.cairo(
+                                          fontSize: 10,
+                                          fontWeight: FontWeight.bold,
+                                          color: isFull ? AppTheme.errorRed : AppTheme.successGreen,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '🗓️ ${g.trainingDays.join("، ")} | ⏰ ${g.sessionTime}',
+                                  style: GoogleFonts.cairo(
+                                    fontSize: 11,
+                                    color: isFull ? Colors.grey : Colors.blueGrey.shade700,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
+                            ),
                           ),
                         );
                       }).toList(),
