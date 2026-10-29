@@ -11,6 +11,7 @@ import 'data/firebase/cloud_sync_service.dart';
 import 'features/attendance/presentation/qr_attendance_scanner_screen.dart';
 import 'features/auth/providers/auth_provider.dart';
 import 'features/coaches_payroll/presentation/coach_payroll_screen.dart';
+import 'features/coaches_payroll/presentation/daily_coach_sessions_screen.dart';
 import 'features/coaches_payroll/presentation/coaches_list_screen.dart';
 import 'features/groups/presentation/groups_management_screen.dart';
 import 'features/groups/presentation/pool_slot_matrix_screen.dart';
@@ -57,20 +58,21 @@ class _AppShellState extends ConsumerState<AppShell> {
       const GroupAttendeesScreen(),            // 1: Groups (المجموعات)
       const PlayerRegistrationScreen(),        // 2: Player Registration (تسجيل لاعب جديد)
       const SubscriptionEntryScreen(),         // 3: New Subscription Entry (اشتراك جديد)
-      const WaterCardScreen(),                 // 4: Water Card Consumption (كروت المياة)
-      const PoolSlotMatrixScreen(),            // 5: Pool Matrix Schedule
-      const PlayersListScreen(),               // 6: Players Directory
-      const SubscriptionsListScreen(),         // 7: Subscriptions History
+      const DailyCoachSessionsScreen(),        // 4: Daily Coach Sessions (تسجيل حصص الكباتن اليومية)
+      const WaterCardScreen(),                 // 5: Water Card Consumption (كروت المياة)
+      const PoolSlotMatrixScreen(),            // 6: Pool Matrix Schedule
+      const PlayersListScreen(),               // 7: Players Directory
+      const SubscriptionsListScreen(),         // 8: Subscriptions History
     ];
 
     // Owner Dedicated Screens
     final List<Widget> ownerScreens = [
-      const OwnerDashboardScreen(),            // 8: Financial Dashboard & Closures
-      const ExpensesManagementScreen(),        // 9: Expenses Management & Log
-      const CoachPayrollScreen(),              // 10: Coach Payroll & Advances
-      const CoachesListScreen(),               // 11: Coaches Directory
-      const GroupsManagementScreen(),          // 12: Groups Management
-      const UserManagementScreen(),            // 13: Staff & Users Management
+      const OwnerDashboardScreen(),            // 9: Financial Dashboard & Closures
+      const ExpensesManagementScreen(),        // 10: Expenses Management & Log
+      const CoachPayrollScreen(),              // 11: Coach Payroll & Advances (مرتب الكباتن)
+      const CoachesListScreen(),               // 12: Coaches Directory
+      const GroupsManagementScreen(),          // 13: Groups Management
+      const UserManagementScreen(),            // 14: Staff & Users Management
     ];
 
     final List<Widget> screens = [
@@ -90,6 +92,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       'المجموعات',
       'تسجيل لاعب جديد',
       'تسجيل وحجز اشتراك جديد',
+      'تسجيل حصص الكباتن اليومية',
       'كروت المياة والاستهلاك',
       'جدول المواعيد وسعة الحارات',
       'دليل وبيانات اللاعبين',
@@ -97,7 +100,7 @@ class _AppShellState extends ConsumerState<AppShell> {
       if (isOwner) ...[
         'اللوحة المالية والتقفيل الشهري',
         'سجل وإدارة المصروفات',
-        'رواتب ومسيرات الكباتن',
+        'مرتب الكباتن',
         'دليل الكباتن والمدربين',
         'إدارة وإنشاء المجموعات',
         'إدارة المستخدمين والموظفين',
@@ -233,8 +236,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.water_drop, color: AppTheme.primaryBlue),
-              title: Text('كروت المياة والاستهلاك', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.timer_outlined, color: AppTheme.primaryBlue),
+              title: Text('تسجيل حصص الكباتن اليومية', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 4,
               onTap: () {
                 setState(() => _currentIndex = 4);
@@ -242,8 +245,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.calendar_month, color: AppTheme.primaryBlue),
-              title: Text('جدول المواعيد وسعة الحارات', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.water_drop, color: AppTheme.primaryBlue),
+              title: Text('كروت المياة والاستهلاك', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 5,
               onTap: () {
                 setState(() => _currentIndex = 5);
@@ -251,8 +254,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.people, color: AppTheme.primaryBlue),
-              title: Text('دليل وبيانات اللاعبين', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.calendar_month, color: AppTheme.primaryBlue),
+              title: Text('جدول المواعيد وسعة الحارات', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 6,
               onTap: () {
                 setState(() => _currentIndex = 6);
@@ -260,11 +263,20 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.receipt_long, color: AppTheme.primaryBlue),
-              title: Text('سجل الاشتراكات والتحصيل', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.people, color: AppTheme.primaryBlue),
+              title: Text('دليل وبيانات اللاعبين', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 7,
               onTap: () {
                 setState(() => _currentIndex = 7);
+                Navigator.pop(context);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.receipt_long, color: AppTheme.primaryBlue),
+              title: Text('سجل الاشتراكات والتحصيل', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              selected: _currentIndex == 8,
+              onTap: () {
+                setState(() => _currentIndex = 8);
                 Navigator.pop(context);
               },
             ),
@@ -289,15 +301,6 @@ class _AppShellState extends ConsumerState<AppShell> {
               ListTile(
                 leading: const Icon(Icons.analytics, color: AppTheme.warningOrange),
                 title: Text('اللوحة المالية والتقفيل الشهري', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                selected: _currentIndex == 8,
-                onTap: () {
-                  setState(() => _currentIndex = 8);
-                  Navigator.pop(context);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.receipt_long, color: AppTheme.warningOrange),
-                title: Text('سجل وإدارة المصروفات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 selected: _currentIndex == 9,
                 onTap: () {
                   setState(() => _currentIndex = 9);
@@ -305,8 +308,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.payments, color: AppTheme.warningOrange),
-                title: Text('رواتب ومسيرات الكباتن', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                leading: const Icon(Icons.receipt_long, color: AppTheme.warningOrange),
+                title: Text('سجل وإدارة المصروفات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 selected: _currentIndex == 10,
                 onTap: () {
                   setState(() => _currentIndex = 10);
@@ -314,8 +317,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.sports, color: AppTheme.warningOrange),
-                title: Text('دليل الكباتن والمدربين', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                leading: const Icon(Icons.payments, color: AppTheme.warningOrange),
+                title: Text('مرتب الكباتن', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 selected: _currentIndex == 11,
                 onTap: () {
                   setState(() => _currentIndex = 11);
@@ -323,8 +326,8 @@ class _AppShellState extends ConsumerState<AppShell> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.tune, color: AppTheme.warningOrange),
-                title: Text('إدارة وإنشاء المجموعات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                leading: const Icon(Icons.sports, color: AppTheme.warningOrange),
+                title: Text('دليل الكباتن والمدربين', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 selected: _currentIndex == 12,
                 onTap: () {
                   setState(() => _currentIndex = 12);
@@ -332,11 +335,20 @@ class _AppShellState extends ConsumerState<AppShell> {
                 },
               ),
               ListTile(
-                leading: const Icon(Icons.manage_accounts, color: AppTheme.warningOrange),
-                title: Text('إدارة المستخدمين والموظفين', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                leading: const Icon(Icons.tune, color: AppTheme.warningOrange),
+                title: Text('إدارة وإنشاء المجموعات', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 selected: _currentIndex == 13,
                 onTap: () {
                   setState(() => _currentIndex = 13);
+                  Navigator.pop(context);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.manage_accounts, color: AppTheme.warningOrange),
+                title: Text('إدارة المستخدمين والموظفين', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                selected: _currentIndex == 14,
+                onTap: () {
+                  setState(() => _currentIndex = 14);
                   Navigator.pop(context);
                 },
               ),
