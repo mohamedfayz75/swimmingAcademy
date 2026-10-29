@@ -116,7 +116,7 @@ class PayrollModel {
   // Calculated fields
   double get totalEarnings => totalSessions * sessionRate;
   double get netPayable => (totalEarnings - advancePayments) > 0 ? (totalEarnings - advancePayments) : 0.0;
-  bool get isPaid => paymentStatus == 'تم القبض';
+  bool get isPaid => paymentStatus == 'تم القبض' || paymentStatus == 'تم الصرف';
 
   factory PayrollModel.fromMap(Map<String, dynamic> map) {
     return PayrollModel(
@@ -126,7 +126,7 @@ class PayrollModel {
       sessions11To20: (map['sessions_11_to_20'] as num?)?.toInt() ?? 0,
       sessions21To31: (map['sessions_21_to_31'] as num?)?.toInt() ?? 0,
       totalSessions: (map['total_sessions'] as num?)?.toInt(),
-      sessionRate: (map['session_rate'] as num?)?.toDouble() ?? 100.0,
+      sessionRate: (map['session_rate'] as num?)?.toDouble() ?? 0.0,
       advancePayments: (map['advance_payments'] as num?)?.toDouble() ?? 0.0,
       paymentStatus: map['payment_status'] as String? ?? 'معلق',
       payoutMethod: map['payout_method'] as String? ?? AppConstants.paymentCash,
