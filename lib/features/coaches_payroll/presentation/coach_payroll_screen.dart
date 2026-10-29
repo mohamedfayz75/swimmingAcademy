@@ -8,6 +8,8 @@ import '../../../core/utils/formatters.dart';
 import '../../owner_dashboard/models/payroll_model.dart';
 import '../../owner_dashboard/providers/dashboard_provider.dart';
 import '../providers/coaches_payroll_provider.dart';
+import '../../../data/local/local_store.dart';
+import 'daily_coach_sessions_screen.dart';
 
 class CoachPayrollScreen extends ConsumerStatefulWidget {
   const CoachPayrollScreen({super.key});
@@ -17,12 +19,53 @@ class CoachPayrollScreen extends ConsumerStatefulWidget {
 }
 
 class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
+  void _confirmDeletePayroll(CoachModel coach, String monthYear) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed),
+            const SizedBox(width: 8),
+            Text('تأكيد مسح القبض', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'هل تريد مسح مسير القبض والحساب بالكامل للكابتن «${coach.coachName}» لشهر $monthYear؟\nيمكنك إعادة احتسابه في أي وقت.',
+          style: GoogleFonts.cairo(fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed),
+            onPressed: () {
+              LocalStore.instance.deletePayroll(coach.coachId, monthYear);
+              Navigator.pop(ctx);
+              AppDialogs.showSuccessSnackBar(context, 'تم مسح مسير القبض بنجاح');
+              ref.invalidate(monthlyPayrollStreamProvider(monthYear));
+              ref.invalidate(monthlyAccountingProvider(monthYear));
+            },
+            child: const Text('مسح نهائي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openPayrollEntrySheet(CoachModel coach, String monthYear, PayrollModel? existing) {
     final s1Controller = TextEditingController(text: '${existing?.sessions1To10 ?? 0}');
     final s2Controller = TextEditingController(text: '${existing?.sessions11To20 ?? 0}');
     final s3Controller = TextEditingController(text: '${existing?.sessions21To31 ?? 0}');
-    final rateController = TextEditingController(text: '${existing?.sessionRate ?? 100.0}');
-    final advanceController = TextEditingController(text: '${existing?.advancePayments ?? 0.0}');
+    final rateController = TextEditingController(
+      text: existing != null && existing.sessionRate > 0
+          ? (existing.sessionRate % 1 == 0 ? existing.sessionRate.toInt().toString() : existing.sessionRate.toString())
+          : '',
+    );
+    final advanceController = TextEditingController(
+      text: existing != null && existing.advancePayments > 0
+          ? (existing.advancePayments % 1 == 0 ? existing.advancePayments.toInt().toString() : existing.advancePayments.toString())
+          : '',
+    );
     String status = existing?.paymentStatus ?? 'معلق';
 
     showModalBottomSheet(
@@ -191,31 +234,53 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
 
                     const SizedBox(height: 20),
 
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        final payroll = PayrollModel(
-                          coachId: coach.coachId,
-                          coachName: coach.coachName,
-                          sessions1To10: s1,
-                          sessions11To20: s2,
-                          sessions21To31: s3,
-                          sessionRate: rate,
-                          advancePayments: adv,
-                          paymentStatus: status,
-                          payoutDate: Timestamp.now(),
-                          monthYear: monthYear,
-                        );
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final payroll = PayrollModel(
+                                coachId: coach.coachId,
+                                coachName: coach.coachName,
+                                sessions1To10: s1,
+                                sessions11To20: s2,
+                                sessions21To31: s3,
+                                totalSessions: totalSess,
+                                sessionRate: rate,
+                                advancePayments: adv,
+                                paymentStatus: status,
+                                payoutDate: Timestamp.now(),
+                                monthYear: monthYear,
+                              );
 
-                        await ref.read(coachesPayrollActionProvider.notifier).savePayroll(payroll);
-                        if (mounted) {
-                          Navigator.pop(ctx);
-                          AppDialogs.showSuccessSnackBar(context, 'تم حفظ مستحقات الكابتن بنجاح');
-                          ref.invalidate(monthlyPayrollStreamProvider(monthYear));
-                          ref.invalidate(monthlyAccountingProvider(monthYear));
-                        }
-                      },
-                      icon: const Icon(Icons.check),
-                      label: const Text('حفظ واحتساب الراتب'),
+                              await ref.read(coachesPayrollActionProvider.notifier).savePayroll(payroll);
+                              if (mounted) {
+                                Navigator.pop(ctx);
+                                AppDialogs.showSuccessSnackBar(context, 'تم حفظ مستحقات الكابتن بنجاح');
+                                ref.invalidate(monthlyPayrollStreamProvider(monthYear));
+                                ref.invalidate(monthlyAccountingProvider(monthYear));
+                              }
+                            },
+                            icon: const Icon(Icons.check),
+                            label: const Text('حفظ واحتساب الراتب'),
+                          ),
+                        ),
+                        if (existing != null) ...[
+                          const SizedBox(width: 8),
+                          IconButton.outlined(
+                            style: IconButton.styleFrom(
+                              foregroundColor: AppTheme.errorRed,
+                              side: const BorderSide(color: AppTheme.errorRed),
+                            ),
+                            icon: const Icon(Icons.delete_outline),
+                            tooltip: 'مسح مسير القبض',
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _confirmDeletePayroll(coach, monthYear);
+                            },
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -246,7 +311,22 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('رواتب ومستحقات الكباتن'),
+        title: const Text('مرتب الكباتن'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.timer_outlined),
+            tooltip: 'تسجيل الحصص اليومية',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const DailyCoachSessionsScreen()),
+              ).then((_) {
+                ref.invalidate(monthlyPayrollStreamProvider(monthYear));
+                ref.invalidate(monthlyAccountingProvider(monthYear));
+              });
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -394,13 +474,28 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
                                   ],
                                 ),
                                 const SizedBox(height: 12),
-                                SizedBox(
-                                  width: double.infinity,
-                                  child: OutlinedButton.icon(
-                                    onPressed: () => _openPayrollEntrySheet(coach, monthYear, payroll),
-                                    icon: const Icon(Icons.calculate),
-                                    label: Text(payroll != null ? 'تعديل المسير والحصص' : 'تسجيل واحتساب المسير'),
-                                  ),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: OutlinedButton.icon(
+                                        onPressed: () => _openPayrollEntrySheet(coach, monthYear, payroll),
+                                        icon: const Icon(Icons.calculate),
+                                        label: Text(payroll != null ? 'الإجمالي' : 'تسجيل واحتساب المسير'),
+                                      ),
+                                    ),
+                                    if (payroll != null) ...[
+                                      const SizedBox(width: 8),
+                                      IconButton.outlined(
+                                        style: IconButton.styleFrom(
+                                          foregroundColor: AppTheme.errorRed,
+                                          side: const BorderSide(color: AppTheme.errorRed),
+                                        ),
+                                        icon: const Icon(Icons.delete_outline, size: 20),
+                                        tooltip: 'مسح المسير والقبض',
+                                        onPressed: () => _confirmDeletePayroll(coach, monthYear),
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ],
                             ),
