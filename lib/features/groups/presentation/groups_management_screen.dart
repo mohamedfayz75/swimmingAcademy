@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dialogs.dart';
+import '../../../data/local/local_store.dart';
 import '../../coaches_payroll/providers/coaches_payroll_provider.dart';
 import '../../subscriptions/models/subscription_model.dart';
 import '../../subscriptions/presentation/subscription_entry_screen.dart';
@@ -19,6 +20,106 @@ class GroupsManagementScreen extends ConsumerStatefulWidget {
 }
 
 class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen> {
+  Future<bool> _checkCoachScheduleConflict({
+    required BuildContext context,
+    required String? coachId,
+    required String? coachName,
+    required String sessionTime,
+    required List<String> trainingDays,
+    String? currentGroupCode,
+  }) async {
+    if (coachId == null) return true;
+
+    final allGroups = LocalStore.instance.getGroups();
+    final normalizedTime = sessionTime.trim().toLowerCase().replaceAll(' ', '');
+
+    GroupModel? conflict;
+    for (final g in allGroups) {
+      if (currentGroupCode != null && g.groupCode == currentGroupCode) continue;
+      if (g.coachId == coachId) {
+        final gTime = g.sessionTime.trim().toLowerCase().replaceAll(' ', '');
+        if (gTime == normalizedTime) {
+          final hasSharedDay = g.trainingDays.any((d) => trainingDays.contains(d));
+          if (hasSharedDay) {
+            conflict = g;
+            break;
+          }
+        }
+      }
+    }
+
+    if (conflict != null) {
+      final sharedDays = conflict.trainingDays.where((d) => trainingDays.contains(d)).toList();
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (dialogCtx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed, size: 28),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'تنبيه: تضارب في مواعيد الكابتن!',
+                  style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'الكابتن «${coachName ?? conflict!.coachName}» لديه بالفعل مجموعة مسجلة في نفس التوقيت:',
+                style: GoogleFonts.cairo(fontSize: 13, height: 1.5),
+              ),
+              const SizedBox(height: 10),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.warningOrange.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppTheme.warningOrange),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('• كود المجموعة الأخرى: ${conflict.groupCode}', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                    const SizedBox(height: 4),
+                    Text('• الأيام المتطابقة: ${sharedDays.join("، ")}', style: GoogleFonts.cairo(fontSize: 12)),
+                    const SizedBox(height: 4),
+                    Text('• الميعاد: ${conflict.sessionTime}', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                '⚠️ فتح مجموعتين لنفس الكابتن في نفس التوقيت قد يسبب ارتباكاً شديداً في كشف النزول. هل أنت متأكد من الحفظ؟',
+                style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.errorRed, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogCtx, false),
+              child: Text('تراجع لتعديل الميعاد', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed),
+              onPressed: () => Navigator.pop(dialogCtx, true),
+              child: const Text('متابعة الحفظ رغم التضارب', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+
+      return proceed == true;
+    }
+
+    return true;
+  }
+
   // --- إضافة مجموعة جديدة ---
   void _showAddGroupDialog() {
     final codeController = TextEditingController(text: 'GRP-0${DateTime.now().second}');
@@ -142,6 +243,17 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                     ElevatedButton(
                       onPressed: () async {
                         if (codeController.text.trim().isEmpty) return;
+
+                        // Check coach schedule conflict
+                        final canProceed = await _checkCoachScheduleConflict(
+                          context: context,
+                          coachId: selectedCoachId,
+                          coachName: selectedCoachName,
+                          sessionTime: timeController.text.trim(),
+                          trainingDays: selectedDays,
+                        );
+                        if (!canProceed) return;
+
                         final cap = int.tryParse(capacityController.text) ?? 6;
 
                         final group = GroupModel(
@@ -305,6 +417,17 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                     ElevatedButton(
                       style: ElevatedButton.styleFrom(backgroundColor: AppTheme.accentTeal),
                       onPressed: () async {
+                        // Check coach schedule conflict
+                        final canProceed = await _checkCoachScheduleConflict(
+                          context: context,
+                          coachId: selectedCoachId ?? group.coachId,
+                          coachName: selectedCoachName ?? group.coachName,
+                          sessionTime: timeController.text.trim(),
+                          trainingDays: selectedDays,
+                          currentGroupCode: group.groupCode,
+                        );
+                        if (!canProceed) return;
+
                         final cap = int.tryParse(capacityController.text) ?? group.maxCapacity;
                         final reg = int.tryParse(registeredController.text) ?? group.currentRegistered;
 
