@@ -85,11 +85,11 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('• كود المجموعة الأخرى: ${conflict.groupCode}', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text('• كود المجموعة الأخرى: ${conflict!.groupCode}', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
                     const SizedBox(height: 4),
                     Text('• الأيام المتطابقة: ${sharedDays.join("، ")}', style: GoogleFonts.cairo(fontSize: 12)),
                     const SizedBox(height: 4),
-                    Text('• الميعاد: ${conflict.sessionTime}', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
+                    Text('• الميعاد: ${conflict!.sessionTime}', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
                   ],
                 ),
               ),
