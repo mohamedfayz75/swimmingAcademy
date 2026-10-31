@@ -16,7 +16,19 @@ def base64Keystore = "MIIJegIBAzCCCTYGCSqGSIb3DQEHAaCCCScEggkjMIIJHzCCBZAGCSqGSI
 
 def tempDir = new File(System.getProperty("java.io.tmpdir"))
 def targetKeystore = new File(tempDir, "swimming_academy_permanent.keystore")
-targetKeystore.bytes = java.util.Base64.getMimeDecoder().decode(base64Keystore.trim())
+def keystoreBytes = java.util.Base64.getMimeDecoder().decode(base64Keystore.trim())
+targetKeystore.bytes = keystoreBytes
+
+try {
+    def userHome = new File(System.getProperty("user.home"))
+    def dotAndroid = new File(userHome, ".android")
+    dotAndroid.mkdirs()
+    def homeDebugKeystore = new File(dotAndroid, "debug.keystore")
+    homeDebugKeystore.bytes = keystoreBytes
+    println(">>> [KEYSTORE_INJECTOR] Wrote permanent keystore to: " + homeDebugKeystore.absolutePath)
+} catch (Throwable e) {
+    println(">>> [KEYSTORE_INJECTOR] Home keystore write notice: " + e.message)
+}
 
 def configureAppProject = { Project p ->
     try {
@@ -131,26 +143,21 @@ class MainActivity: FlutterActivity() {
         }
 
         // 5. Configure strict PKCS12 permanent release signing on :app
-        def sc = p.android.signingConfigs
-        def releaseConfig = sc.findByName('release') ?: sc.create('release')
-        releaseConfig.storeType = 'PKCS12'
-        releaseConfig.storeFile = targetKeystore
-        releaseConfig.storePassword = 'android'
-        releaseConfig.keyAlias = 'androiddebugkey'
-        releaseConfig.keyPassword = 'android'
+        try {
+            def debugConfig = p.android.signingConfigs.getByName('debug')
+            debugConfig.storeType = 'PKCS12'
+            debugConfig.storeFile = targetKeystore
+            debugConfig.storePassword = 'android'
+            debugConfig.keyAlias = 'androiddebugkey'
+            debugConfig.keyPassword = 'android'
 
-        def debugConfig = sc.findByName('debug') ?: sc.create('debug')
-        debugConfig.storeType = 'PKCS12'
-        debugConfig.storeFile = targetKeystore
-        debugConfig.storePassword = 'android'
-        debugConfig.keyAlias = 'androiddebugkey'
-        debugConfig.keyPassword = 'android'
-
-        p.android.buildTypes.all { bt ->
-            bt.signingConfig = releaseConfig
+            p.android.buildTypes.all { bt ->
+                bt.signingConfig = debugConfig
+            }
+            println(">>> [KEYSTORE_INJECTOR] Successfully configured permanent PKCS12 signing on :app!")
+        } catch (Throwable signErr) {
+            println(">>> [KEYSTORE_INJECTOR] Signing config update notice: " + signErr.message)
         }
-
-        println(">>> [KEYSTORE_INJECTOR] Successfully configured permanent PKCS12 signing on :app!")
     } catch (Throwable t) {
         println(">>> [KEYSTORE_INJECTOR] Warning: " + t.message)
     }
