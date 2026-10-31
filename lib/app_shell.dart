@@ -58,8 +58,8 @@ class _AppShellState extends ConsumerState<AppShell> {
       const GroupAttendeesScreen(),            // 1: Groups (المجموعات)
       const PlayerRegistrationScreen(),        // 2: Player Registration (تسجيل لاعب جديد)
       const SubscriptionEntryScreen(),         // 3: New Subscription Entry (اشتراك جديد)
-      const DailyCoachSessionsScreen(),        // 4: Daily Coach Sessions (تسجيل حصص الكباتن اليومية)
-      const WaterCardScreen(),                 // 5: Water Card Consumption (كروت المياة)
+      const WaterCardScreen(),                 // 4: Water Card Consumption (كروت المياة)
+      const DailyCoachSessionsScreen(),        // 5: Daily Coach Sessions (تسجيل حصص الكباتن اليومية)
       const PoolSlotMatrixScreen(),            // 6: Pool Matrix Schedule
       const PlayersListScreen(),               // 7: Players Directory
       const SubscriptionsListScreen(),         // 8: Subscriptions History
@@ -92,8 +92,8 @@ class _AppShellState extends ConsumerState<AppShell> {
       'المجموعات',
       'تسجيل لاعب جديد',
       'تسجيل وحجز اشتراك جديد',
-      'تسجيل حصص الكباتن اليومية',
       'كروت المياة والاستهلاك',
+      'تسجيل حصص الكباتن اليومية',
       'جدول المواعيد وسعة الحارات',
       'دليل وبيانات اللاعبين',
       'سجل الاشتراكات والتحصيل',
@@ -236,8 +236,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.timer_outlined, color: AppTheme.primaryBlue),
-              title: Text('تسجيل حصص الكباتن اليومية', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.water_drop, color: AppTheme.primaryBlue),
+              title: Text('كروت المياة والاستهلاك', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 4,
               onTap: () {
                 setState(() => _currentIndex = 4);
@@ -245,8 +245,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.water_drop, color: AppTheme.primaryBlue),
-              title: Text('كروت المياة والاستهلاك', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.timer_outlined, color: AppTheme.primaryBlue),
+              title: Text('تسجيل حصص الكباتن اليومية', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 5,
               onTap: () {
                 setState(() => _currentIndex = 5);
