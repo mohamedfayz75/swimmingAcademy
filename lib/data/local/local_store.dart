@@ -64,8 +64,8 @@ class LocalStore {
   }
 
   Stream<List<GroupModel>> get groupsStream async* {
-    yield List.unmodifiable(_groups);
-    yield* _groupsController.stream;
+    yield List.unmodifiable(getGroups());
+    yield* _groupsController.stream.map((list) => getGroups());
   }
 
   Stream<List<SubscriptionModel>> get subscriptionsStream async* {
@@ -334,6 +334,9 @@ class LocalStore {
             }
           }
         }
+
+        // Recalculate group occupancy dynamically from active unexpired subscriptions
+        recalculateAllGroupsCapacity();
       }
     } catch (e) {
       debugPrint('LocalStore.init error: $e');
@@ -535,6 +538,7 @@ class LocalStore {
     if (changed) {
       _subscriptionsController.add(List.unmodifiable(_subscriptions));
       _saveAll();
+      recalculateAllGroupsCapacity();
     }
   }
 
@@ -662,6 +666,7 @@ class LocalStore {
     if (_subscriptions.length != before) {
       _subscriptionsController.add(List.unmodifiable(_subscriptions));
       _saveAll();
+      recalculateAllGroupsCapacity();
     }
   }
 
@@ -861,18 +866,56 @@ class LocalStore {
   }
 
   // --- Groups ---
-  List<GroupModel> getGroups() => List.unmodifiable(_groups);
+  List<GroupModel> getGroups() {
+    return _groups.map((g) {
+      final activeCount = getActiveSubscriptionsForGroup(g.groupCode).length;
+      return g.copyWith(currentRegistered: activeCount);
+    }).toList();
+  }
+
+  int getActiveRegisteredCount(String groupCode) {
+    return getActiveSubscriptionsForGroup(groupCode).length;
+  }
+
+  String generateNextGroupCode() {
+    int maxCode = 0;
+    for (final g in _groups) {
+      final match = RegExp(r'\d+').firstMatch(g.groupCode);
+      if (match != null) {
+        final val = int.tryParse(match.group(0)!) ?? 0;
+        if (val > maxCode) maxCode = val;
+      }
+    }
+    return 'GRP-${(maxCode + 1).toString().padLeft(2, '0')}';
+  }
+
+  void recalculateAllGroupsCapacity() {
+    bool changed = false;
+    for (int i = 0; i < _groups.length; i++) {
+      final activeCount = getActiveSubscriptionsForGroup(_groups[i].groupCode).length;
+      if (_groups[i].currentRegistered != activeCount) {
+        _groups[i] = _groups[i].copyWith(currentRegistered: activeCount);
+        changed = true;
+      }
+    }
+    if (changed) {
+      _groupsController.add(List.unmodifiable(getGroups()));
+      _saveAll();
+    }
+  }
 
   void addGroup(GroupModel group) {
     _groups.add(group);
-    _groupsController.add(List.unmodifiable(_groups));
+    _groupsController.add(List.unmodifiable(getGroups()));
     _saveAll();
     CloudSyncService.instance.pushGroup(group);
   }
 
   GroupModel? getGroupByCode(String code) {
     try {
-      return _groups.firstWhere((g) => g.groupCode == code);
+      final g = _groups.firstWhere((g) => g.groupCode == code);
+      final activeCount = getActiveSubscriptionsForGroup(g.groupCode).length;
+      return g.copyWith(currentRegistered: activeCount);
     } catch (_) {
       return null;
     }
@@ -1004,6 +1047,7 @@ class LocalStore {
 
     _subscriptionsController.add(List.unmodifiable(_subscriptions));
     _saveAll();
+    recalculateAllGroupsCapacity();
     CloudSyncService.instance.pushSubscription(model);
     return model;
   }
@@ -1063,6 +1107,7 @@ class LocalStore {
       _subscriptions.removeAt(subIndex);
       _subscriptionsController.add(List.unmodifiable(_subscriptions));
       _saveAll();
+      recalculateAllGroupsCapacity();
       CloudSyncService.instance.deleteSubscription(id);
     }
   }
