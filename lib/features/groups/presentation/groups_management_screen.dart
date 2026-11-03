@@ -122,7 +122,7 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
 
   // --- إضافة مجموعة جديدة ---
   void _showAddGroupDialog() {
-    final codeController = TextEditingController(text: 'GRP-0${DateTime.now().second}');
+    final codeController = TextEditingController(text: LocalStore.instance.generateNextGroupCode());
     final capacityController = TextEditingController(text: '6');
     final timeController = TextEditingController(text: '05:00 PM');
     String trainingType = AppConstants.trainingTypes.first;
@@ -745,6 +745,7 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
   @override
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(groupsStreamProvider);
+    ref.watch(subscriptionsStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
