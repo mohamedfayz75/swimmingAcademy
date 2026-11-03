@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import '../../features/attendance/models/attendance_model.dart';
 import '../../features/auth/models/user_model.dart';
+import '../../features/coaches_payroll/models/daily_coach_session_model.dart';
 import '../../features/groups/models/group_model.dart';
 import '../../features/owner_dashboard/models/accounting_model.dart';
 import '../../features/owner_dashboard/models/expense_model.dart';
@@ -282,6 +283,26 @@ class CloudSyncService {
         onError: (e) => debugPrint('Live sync payroll error: $e'),
       ),
     );
+
+    // 11. Daily Coach Sessions
+    _subscriptions.add(
+      firestore.collection('daily_coach_sessions').snapshots().listen(
+        (snapshot) {
+          if (snapshot.docs.isNotEmpty) {
+            final List<DailyCoachSessionModel> remote = [];
+            for (final doc in snapshot.docs) {
+              try {
+                remote.add(DailyCoachSessionModel.fromFirestore(doc));
+              } catch (_) {}
+            }
+            if (remote.isNotEmpty) {
+              LocalStore.instance.mergeRemoteDailyCoachSessions(remote);
+            }
+          }
+        },
+        onError: (e) => debugPrint('Live sync daily_coach_sessions error: $e'),
+      ),
+    );
   }
 
   // --- Outgoing Push Methods (Fire & Forget, offline safe) ---
@@ -474,6 +495,28 @@ class CloudSyncService {
     }
   }
 
+  Future<void> pushDailyCoachSession(DailyCoachSessionModel session) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('daily_coach_sessions')
+          .doc(session.id)
+          .set(session.toFirestore(), SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('CloudSync pushDailyCoachSession error: $e');
+    }
+  }
+
+  Future<void> deleteDailyCoachSession(String id) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('daily_coach_sessions')
+          .doc(id)
+          .delete();
+    } catch (e) {
+      debugPrint('CloudSync deleteDailyCoachSession error: $e');
+    }
+  }
+
   Future<void> pushUser(UserModel user) async {
     try {
       await FirebaseFirestore.instance
@@ -543,6 +586,11 @@ class CloudSyncService {
         await firestore.collection('users').doc(u.uid).set(u.toFirestore(), SetOptions(merge: true));
       }
 
+      // 9. Upload Daily Coach Sessions
+      for (final d in store.getDailyCoachSessions()) {
+        await firestore.collection('daily_coach_sessions').doc(d.id).set(d.toFirestore(), SetOptions(merge: true));
+      }
+
       // Pull fresh data from cloud
       final playersSnap = await firestore.collection('players').get();
       if (playersSnap.docs.isNotEmpty) {
@@ -553,6 +601,28 @@ class CloudSyncService {
           } catch (_) {}
         }
         store.mergeRemotePlayers(pList);
+      }
+
+      final dailySnap = await firestore.collection('daily_coach_sessions').get();
+      if (dailySnap.docs.isNotEmpty) {
+        final List<DailyCoachSessionModel> dList = [];
+        for (final d in dailySnap.docs) {
+          try {
+            dList.add(DailyCoachSessionModel.fromFirestore(d));
+          } catch (_) {}
+        }
+        store.mergeRemoteDailyCoachSessions(dList);
+      }
+
+      final payrollSnap = await firestore.collection('payroll').get();
+      if (payrollSnap.docs.isNotEmpty) {
+        final List<PayrollModel> prList = [];
+        for (final d in payrollSnap.docs) {
+          try {
+            prList.add(PayrollModel.fromMap(d.data()));
+          } catch (_) {}
+        }
+        store.mergeRemotePayrolls(prList);
       }
 
       final subsSnap = await firestore.collection('subscriptions').get();
