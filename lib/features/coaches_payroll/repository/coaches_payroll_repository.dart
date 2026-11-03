@@ -26,7 +26,7 @@ class CoachesPayrollRepository {
 
   // Stream payroll for a specific month
   Stream<List<PayrollModel>> streamMonthlyPayroll(String monthYear) {
-    return Stream.value(_store.getPayrollForMonth(monthYear));
+    return _store.payrollsStream.map((list) => list.where((p) => p.monthYear == monthYear).toList());
   }
 
   // Save/Update payroll entry
