@@ -61,12 +61,20 @@ class DailyCoachSessionModel {
       id: doc.id,
       coachId: data['coach_id'] as String? ?? '',
       coachName: data['coach_name'] as String? ?? '',
-      date: data['date'] as Timestamp? ?? Timestamp.now(),
+      date: data['date'] is Timestamp
+          ? data['date'] as Timestamp
+          : (data['date_ms'] != null
+              ? Timestamp.fromMillisecondsSinceEpoch(data['date_ms'] as int)
+              : Timestamp.now()),
       sessionCount: (data['session_count'] as num?)?.toInt() ?? 1,
       notes: data['notes'] as String? ?? '',
       monthYear: data['month_year'] as String? ?? '',
       recordedBy: data['recorded_by'] as String? ?? 'المسؤول',
-      createdAt: data['created_at'] as Timestamp? ?? Timestamp.now(),
+      createdAt: data['created_at'] is Timestamp
+          ? data['created_at'] as Timestamp
+          : (data['created_at_ms'] != null
+              ? Timestamp.fromMillisecondsSinceEpoch(data['created_at_ms'] as int)
+              : Timestamp.now()),
     );
   }
 
@@ -76,11 +84,13 @@ class DailyCoachSessionModel {
       'coach_id': coachId,
       'coach_name': coachName,
       'date': date,
+      'date_ms': date.millisecondsSinceEpoch,
       'session_count': sessionCount,
       'notes': notes,
       'month_year': monthYear,
       'recorded_by': recordedBy,
       'created_at': createdAt,
+      'created_at_ms': createdAt.millisecondsSinceEpoch,
     };
   }
 }
