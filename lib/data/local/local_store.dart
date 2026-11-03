@@ -320,6 +320,20 @@ class LocalStore {
         if (_users.isEmpty) {
           _initDefaultUsers();
         }
+
+        // Auto-recalculate payrolls from stored daily sessions upon launch
+        if (_dailyCoachSessions.isNotEmpty) {
+          final Set<String> coachMonthPairs = {};
+          for (final s in _dailyCoachSessions) {
+            coachMonthPairs.add('${s.coachId}|${s.monthYear}');
+          }
+          for (final pair in coachMonthPairs) {
+            final parts = pair.split('|');
+            if (parts.length == 2) {
+              _recalculateCoachMonthlyPayroll(parts[0], parts[1]);
+            }
+          }
+        }
       }
     } catch (e) {
       debugPrint('LocalStore.init error: $e');
@@ -674,6 +688,32 @@ class LocalStore {
     }
     if (changed) {
       _payrollsController.add(List.unmodifiable(_payrolls));
+      _saveAll();
+    }
+  }
+
+  void mergeRemoteDailyCoachSessions(List<DailyCoachSessionModel> remote) {
+    bool changed = false;
+    final Set<String> coachMonthPairs = {};
+    for (final s in remote) {
+      coachMonthPairs.add('${s.coachId}|${s.monthYear}');
+      final index = _dailyCoachSessions.indexWhere((x) => x.id == s.id);
+      if (index != -1) {
+        _dailyCoachSessions[index] = s;
+        changed = true;
+      } else {
+        _dailyCoachSessions.insert(0, s);
+        changed = true;
+      }
+    }
+    if (changed) {
+      _dailyCoachSessionsController.add(List.unmodifiable(_dailyCoachSessions));
+      for (final pair in coachMonthPairs) {
+        final parts = pair.split('|');
+        if (parts.length == 2) {
+          _recalculateCoachMonthlyPayroll(parts[0], parts[1]);
+        }
+      }
       _saveAll();
     }
   }
@@ -1244,6 +1284,7 @@ class LocalStore {
     _dailyCoachSessionsController.add(List.unmodifiable(_dailyCoachSessions));
     _recalculateCoachMonthlyPayroll(session.coachId, session.monthYear);
     _saveAll();
+    CloudSyncService.instance.pushDailyCoachSession(session);
   }
 
   void deleteDailyCoachSession(String id) {
@@ -1254,11 +1295,17 @@ class LocalStore {
       _dailyCoachSessionsController.add(List.unmodifiable(_dailyCoachSessions));
       _recalculateCoachMonthlyPayroll(session.coachId, session.monthYear);
       _saveAll();
+      CloudSyncService.instance.deleteDailyCoachSession(id);
     }
   }
 
   void _recalculateCoachMonthlyPayroll(String coachId, String monthYear) {
-    final sessions = _dailyCoachSessions.where((s) => s.coachId == coachId && s.monthYear == monthYear).toList();
+    final sessions = _dailyCoachSessions.where((s) {
+      if (s.coachId != coachId) return false;
+      final sDate = s.date.toDate();
+      final sMonthYear = '${sDate.month.toString().padLeft(2, '0')}-${sDate.year}';
+      return s.monthYear == monthYear || sMonthYear == monthYear;
+    }).toList();
     int s1 = 0;
     int s2 = 0;
     int s3 = 0;
