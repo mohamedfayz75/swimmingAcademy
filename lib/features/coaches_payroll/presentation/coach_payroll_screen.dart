@@ -53,9 +53,29 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
   }
 
   void _openPayrollEntrySheet(CoachModel coach, String monthYear, PayrollModel? existing) {
-    final s1Controller = TextEditingController(text: '${existing?.sessions1To10 ?? 0}');
-    final s2Controller = TextEditingController(text: '${existing?.sessions11To20 ?? 0}');
-    final s3Controller = TextEditingController(text: '${existing?.sessions21To31 ?? 0}');
+    // Calculate live session breakdown from daily coach sessions
+    final dailySessions = LocalStore.instance.getDailyCoachSessions(coachId: coach.coachId, monthYear: monthYear);
+    int liveS1 = 0;
+    int liveS2 = 0;
+    int liveS3 = 0;
+    for (final s in dailySessions) {
+      final day = s.date.toDate().day;
+      if (day <= 10) {
+        liveS1 += s.sessionCount;
+      } else if (day <= 20) {
+        liveS2 += s.sessionCount;
+      } else {
+        liveS3 += s.sessionCount;
+      }
+    }
+    final bool hasDailyRecords = dailySessions.isNotEmpty;
+    final int defaultS1 = hasDailyRecords ? liveS1 : (existing?.sessions1To10 ?? 0);
+    final int defaultS2 = hasDailyRecords ? liveS2 : (existing?.sessions11To20 ?? 0);
+    final int defaultS3 = hasDailyRecords ? liveS3 : (existing?.sessions21To31 ?? 0);
+
+    final s1Controller = TextEditingController(text: '$defaultS1');
+    final s2Controller = TextEditingController(text: '$defaultS2');
+    final s3Controller = TextEditingController(text: '$defaultS3');
     final rateController = TextEditingController(
       text: existing != null && existing.sessionRate > 0
           ? (existing.sessionRate % 1 == 0 ? existing.sessionRate.toInt().toString() : existing.sessionRate.toString())
@@ -112,6 +132,33 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
                       ],
                     ),
                     const Divider(height: 20),
+
+                    if (hasDailyRecords)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: AppTheme.accentTeal.withOpacity(0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: AppTheme.accentTeal.withOpacity(0.4)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.auto_awesome, color: AppTheme.accentTeal, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'تم تجميع ${(liveS1 + liveS2 + liveS3)} حصة تلقائياً من الحصص اليومية المسجلة للكابتن لهذا الشهر',
+                                style: GoogleFonts.cairo(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.accentTeal,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
                     Text('تسجيل الحصص حسب فترات الشهر الثلاث:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                     const SizedBox(height: 10),
