@@ -1,6 +1,5 @@
 import '../../../data/local/local_store.dart';
 import '../../owner_dashboard/models/payroll_model.dart';
-import '../models/coach_daily_session_model.dart';
 
 class CoachesPayrollRepository {
   final LocalStore _store = LocalStore.instance;
@@ -25,11 +24,9 @@ class CoachesPayrollRepository {
     _store.deleteCoach(coachId);
   }
 
-  // Stream payroll for a specific month (reactive)
+  // Stream payroll for a specific month
   Stream<List<PayrollModel>> streamMonthlyPayroll(String monthYear) {
-    return _store.payrollsStream.map(
-      (list) => list.where((p) => p.monthYear == monthYear).toList(),
-    );
+    return _store.payrollsStream.map((list) => list.where((p) => p.monthYear == monthYear).toList());
   }
 
   // Save/Update payroll entry
@@ -37,32 +34,8 @@ class CoachesPayrollRepository {
     _store.savePayroll(payroll);
   }
 
-  // Delete payroll entry
-  Future<void> deletePayrollRecord(String coachId, String monthYear) async {
-    _store.deletePayroll(coachId, monthYear);
-  }
-
+  // Seed sample coaches
   Future<void> seedInitialCoachesIfEmpty() async {
-    // Coached list initialized
-  }
-
-  // Stream daily sessions
-  Stream<List<CoachDailySessionModel>> streamDailySessions({String? coachId}) {
-    if (coachId != null && coachId.isNotEmpty) {
-      return _store.coachDailySessionsStream.map(
-        (list) => list.where((s) => s.coachId == coachId).toList(),
-      );
-    }
-    return _store.coachDailySessionsStream;
-  }
-
-  // Add daily session
-  Future<void> addDailySession(CoachDailySessionModel session) async {
-    _store.addCoachDailySession(session);
-  }
-
-  // Delete daily session
-  Future<void> deleteDailySession(String sessionId) async {
-    _store.deleteCoachDailySession(sessionId);
+    // Handled in LocalStore
   }
 }
