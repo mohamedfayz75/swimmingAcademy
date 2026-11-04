@@ -1,12 +1,12 @@
 class AppConstants {
   // App Title
-  static const String appName = 'S.W - المعادي';
-  static const String appSubtitle = 'Swimming World Academy - Maadi';
+  static const String appName = 'أكاديمية عالم السباحة';
+  static const String appSubtitle = 'Swimming World Academy';
 
   // Default Branch
-  static const String defaultBranch = 'المعادي';
+  static const String defaultBranch = 'دار المشاة';
   static const List<String> branches = [
-    'المعادي',
+    'دار المشاة',
   ];
 
   // Firestore Collections
@@ -21,11 +21,12 @@ class AppConstants {
   static const String expensesCollection = 'expenses';
   static const String generalAccountingCollection = 'general_accounting';
 
-  // Pool Types for Water Cards (فرع المعادي: حمام سباحة واحد فقط)
+  // Pool Types for Water Cards
   static const String poolSemiOlympic = 'نصف أولمبي';
   static const String poolRecreational = 'ترفيهي';
   static const List<String> poolTypes = [
     poolSemiOlympic,
+    poolRecreational,
   ];
 
   // Group Types and Max Capacities
