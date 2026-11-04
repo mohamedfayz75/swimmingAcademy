@@ -213,56 +213,273 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
     );
   }
 
-  Widget _buildSectionCard({required String title, required IconData icon, required List<Widget> children}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: AppTheme.backgroundLight,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.blueGrey.shade100),
+  void _showSubscriptionDetailsSheet(SubscriptionModel sub) {
+    final player = LocalStore.instance.getPlayerByCode(sub.playerCode);
+    final phone = player?.guardianPhone ?? '';
+    final isExpired = sub.isExpired;
+    final isPaid = sub.isFullyPaid;
+    final progress = sub.sessionsCount > 0
+        ? (sub.attendedSessions / sub.sessionsCount).clamp(0.0, 1.0)
+        : 0.0;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(icon, size: 18, color: AppTheme.primaryBlue),
-              const SizedBox(width: 8),
-              Text(
-                title,
-                style: GoogleFonts.cairo(
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                  color: AppTheme.primaryBlue,
-                ),
+      builder: (sheetCtx) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) {
+            return SingleChildScrollView(
+              controller: scrollController,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Header
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primaryBlue.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: const Icon(Icons.badge, color: AppTheme.primaryBlue),
+                          ),
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'تفاصيل الاشتراك الكاملة',
+                                style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+                              ),
+                              Text('كود العضوية: ${sub.playerCode}', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted)),
+                            ],
+                          ),
+                        ],
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.close),
+                        onPressed: () => Navigator.pop(sheetCtx),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 20),
+
+                  // 1. Swimmer & Branch Info
+                  _buildSectionHeader(Icons.person, 'بيانات السباح والفرع'),
+                  _buildInfoRow('اسم السباح:', sub.playerName, isBold: true),
+                  _buildInfoRow('رقم ولي الأمر:', phone.isNotEmpty ? phone : 'غير مسجل'),
+                  _buildInfoRow('الفرع:', sub.branch.isNotEmpty ? sub.branch : 'فرع المشاة'),
+
+                  const SizedBox(height: 14),
+
+                  // 2. Training & Group Details
+                  _buildSectionHeader(Icons.pool, 'تفاصيل التدريب والمجموعة'),
+                  _buildInfoRow('كود المجموعة:', sub.groupCode),
+                  _buildInfoRow('الكابتن المدرب:', 'كابتن ${sub.coachName}'),
+                  _buildInfoRow('أيام التدريب:', sub.trainingDays.isNotEmpty ? sub.trainingDays.join('، ') : 'حسب الجدول'),
+                  _buildInfoRow('توقيت الحصة:', sub.sessionTime.isNotEmpty ? sub.sessionTime : 'حسب الجدول'),
+                  _buildInfoRow('نوع التدريب:', sub.subscriptionType),
+
+                  const SizedBox(height: 14),
+
+                  // 3. Validity & Dates
+                  _buildSectionHeader(Icons.date_range, 'فترة الصلاحية والتواريخ'),
+                  _buildInfoRow('تاريخ البداية (نزول المياة):', AppFormatters.formatTimestamp(sub.startDate)),
+                  _buildInfoRow('تاريخ الانتهاء:', AppFormatters.formatTimestamp(sub.endDate)),
+                  _buildInfoRow(
+                    'حالة الاشتراك:',
+                    isExpired ? 'منتهي الصلاحية' : (sub.isDepositOnly ? 'حجز عربون' : 'ساري ونشط'),
+                    valueColor: isExpired ? AppTheme.errorRed : AppTheme.successGreen,
+                    isBold: true,
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // 4. Session Balance & Progress
+                  _buildSectionHeader(Icons.fact_check, 'رصيد الحصص والمتابعة'),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      _buildMetricTile('المقررة', '${sub.sessionsCount}', AppTheme.primaryBlue),
+                      _buildMetricTile('المحضورة', '${sub.attendedSessions}', AppTheme.accentTeal),
+                      _buildMetricTile('المتبقية', '${sub.remainingSessions}', isExpired ? AppTheme.errorRed : AppTheme.successGreen),
+                      _buildMetricTile('التعويض الطبي', '${sub.medicalSessionsCompensated}', AppTheme.warningOrange),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 8,
+                      backgroundColor: Colors.grey.shade200,
+                      valueColor: AlwaysStoppedAnimation<Color>(isExpired ? AppTheme.errorRed : AppTheme.accentCyan),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text('${(progress * 100).toInt()}% منجز', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // 5. Complete Financial Breakdown
+                  _buildSectionHeader(Icons.account_balance_wallet, 'التفاصيل المالية الكاملة'),
+                  _buildInfoRow('قيمة التدريب المقررة:', AppFormatters.formatCurrency(sub.amountRequired)),
+                  if (sub.stampCardFee > 0)
+                    _buildInfoRow('رسم ختم الكارت والاستمارة:', AppFormatters.formatCurrency(sub.stampCardFee)),
+                  _buildInfoRow('إجمالي المبلغ المستحق:', AppFormatters.formatCurrency(sub.totalDue), isBold: true),
+                  _buildInfoRow('المبلغ المسدد:', AppFormatters.formatCurrency(sub.amountPaid), isBold: true, valueColor: AppTheme.successGreen),
+                  _buildInfoRow(
+                    'المبلغ المتبقي:',
+                    AppFormatters.formatCurrency(sub.amountRemaining),
+                    isBold: true,
+                    valueColor: isPaid ? AppTheme.successGreen : AppTheme.errorRed,
+                  ),
+                  _buildInfoRow('طريقة الدفع:', sub.paymentMethod),
+                  _buildInfoRow('تاريخ السداد / القيد:', AppFormatters.formatTimestamp(sub.createdAt)),
+
+                  const SizedBox(height: 20),
+
+                  // 6. Direct Action Buttons
+                  ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    onPressed: () async {
+                      if (phone.isEmpty) {
+                        AppDialogs.showWarningSnackBar(context, 'رقم هاتف ولي الأمر غير مسجل');
+                        return;
+                      }
+                      final msg = WhatsAppHelper.buildSubscriptionInvoiceMessage(sub: sub, isRenewal: false);
+                      await WhatsAppHelper.openWhatsApp(phone: phone, message: msg);
+                    },
+                    icon: const Icon(Icons.chat, color: Colors.white),
+                    label: Text('إرسال الفاتورة عبر واتساب', style: GoogleFonts.cairo(color: Colors.white, fontWeight: FontWeight.bold)),
+                  ),
+
+                  const SizedBox(height: 10),
+
+                  Row(
+                    children: [
+                      if (!sub.isFullyPaid) ...[
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: AppTheme.warningOrange,
+                              side: const BorderSide(color: AppTheme.warningOrange),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(sheetCtx);
+                              _showSettleBalanceDialog(sub);
+                            },
+                            icon: const Icon(Icons.payment, size: 16),
+                            label: Text('سداد المتبقي', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                      ],
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.accentTeal,
+                            side: const BorderSide(color: AppTheme.accentTeal),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          onPressed: () {
+                            Navigator.pop(sheetCtx);
+                            _showTransferGroupDialog(sub);
+                          },
+                          icon: const Icon(Icons.swap_horiz, size: 16),
+                          label: Text('نقل مجموعة', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: isExpired ? AppTheme.primaryBlue : AppTheme.accentTeal,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          onPressed: () {
+                            Navigator.pop(sheetCtx);
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => SubscriptionEntryScreen(preSelectedPlayer: player),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.autorenew, size: 16),
+                          label: Text('تجديد الاشتراك', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                ],
               ),
-            ],
-          ),
-          const Divider(height: 16),
-          ...children,
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildSectionHeader(IconData icon, String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: AppTheme.primaryBlue),
+          const SizedBox(width: 6),
+          Text(title, style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue)),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value, {Color? valueColor, bool isBold = false}) {
+  Widget _buildInfoRow(String label, String value, {bool isBold = false, Color? valueColor}) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3.5),
+      padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: GoogleFonts.cairo(fontSize: 13, color: AppTheme.textMuted)),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: GoogleFonts.cairo(
-                fontSize: 13,
-                fontWeight: isBold ? FontWeight.bold : FontWeight.w600,
-                color: valueColor ?? AppTheme.textDark,
-              ),
+          Text(label, style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted)),
+          Text(
+            value,
+            style: GoogleFonts.cairo(
+              fontSize: 12,
+              fontWeight: isBold ? FontWeight.bold : FontWeight.normal,
+              color: valueColor ?? AppTheme.textDark,
             ),
           ),
         ],
@@ -270,273 +487,23 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
     );
   }
 
-  void _showSubscriptionDetailsModal(SubscriptionModel sub) {
-    final player = LocalStore.instance.getPlayerByCode(sub.playerCode);
-    final isPaid = sub.isFullyPaid;
-    final isExpired = sub.isExpired;
-    final progress = sub.sessionsCount > 0 ? (sub.attendedSessions / sub.sessionsCount).clamp(0.0, 1.0) : 0.0;
-
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.85,
-          minChildSize: 0.5,
-          maxChildSize: 0.95,
-          expand: false,
-          builder: (context, scrollController) {
-            return Column(
-              children: [
-                // Modal Handle
-                Container(
-                  margin: const EdgeInsets.only(top: 10, bottom: 6),
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-
-                // Header
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              sub.playerName,
-                              style: GoogleFonts.cairo(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryBlue,
-                              ),
-                            ),
-                            Text(
-                              'كود: ${sub.playerCode} | الفرع: ${sub.branch}',
-                              style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: isExpired
-                              ? AppTheme.errorRed.withOpacity(0.12)
-                              : (isPaid ? AppTheme.successGreen.withOpacity(0.12) : AppTheme.warningOrange.withOpacity(0.12)),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          isExpired ? 'منتهي الصلاحية' : 'اشتراك ساري نشط',
-                          style: GoogleFonts.cairo(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: isExpired
-                                ? AppTheme.errorRed
-                                : (isPaid ? AppTheme.successGreen : AppTheme.warningOrange),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1),
-
-                // Scrollable Content
-                Expanded(
-                  child: ListView(
-                    controller: scrollController,
-                    padding: const EdgeInsets.all(20),
-                    children: [
-                      // 1. بيانات السباح والاتصال
-                      _buildSectionCard(
-                        title: 'بيانات السباح والتواصل',
-                        icon: Icons.person_outline,
-                        children: [
-                          _buildDetailRow('اسم السباح', sub.playerName, isBold: true),
-                          _buildDetailRow('كود السباح', sub.playerCode),
-                          _buildDetailRow('الفرع المسجل به', sub.branch),
-                          if (player != null && player.guardianPhone.isNotEmpty)
-                            _buildDetailRow('هاتف ولي الأمر', player.guardianPhone),
-                          if (player != null && player.birthDate != null)
-                            _buildDetailRow('تاريخ الميلاد', AppFormatters.formatDate(player.birthDate!.toDate())),
-                        ],
-                      ),
-
-                      // 2. بيانات التدريب والمجموعة
-                      _buildSectionCard(
-                        title: 'تفاصيل التدريب والمجموعة',
-                        icon: Icons.pool_outlined,
-                        children: [
-                          _buildDetailRow('المجموعة الأساسية', sub.groupCode, isBold: true, valueColor: AppTheme.primaryBlue),
-                          if (sub.secondaryGroupCode != null && sub.secondaryGroupCode!.isNotEmpty)
-                            _buildDetailRow('المجموعة المشتركة (المقسمة)', sub.secondaryGroupCode!, valueColor: AppTheme.accentTeal),
-                          _buildDetailRow('الكابتن المدرب', sub.coachName),
-                          _buildDetailRow('أيام التمرين', sub.trainingDays.join('، ')),
-                          _buildDetailRow('توقيت الحصة', sub.sessionTime),
-                          _buildDetailRow('مرحلة / نوع التدريب', sub.trainingType),
-                          _buildDetailRow('نظام الاشتراك', sub.subscriptionType),
-                        ],
-                      ),
-
-                      // 3. التواريخ وفترة الصلاحية
-                      _buildSectionCard(
-                        title: 'فترة الصلاحية والتواريخ',
-                        icon: Icons.calendar_month_outlined,
-                        children: [
-                          _buildDetailRow('تاريخ بداية الاشتراك', AppFormatters.formatDate(sub.startDate.toDate())),
-                          _buildDetailRow('تاريخ نهاية الاشتراك', AppFormatters.formatDate(sub.endDate.toDate())),
-                          _buildDetailRow(
-                            'حالة الصلاحية',
-                            isExpired ? 'منتهي (انتهت المدة أو استُهلكت الحصص)' : 'ساري وصالح للحضور',
-                            valueColor: isExpired ? AppTheme.errorRed : AppTheme.successGreen,
-                            isBold: true,
-                          ),
-                        ],
-                      ),
-
-                      // 4. رصيد الحصص والحضور
-                      _buildSectionCard(
-                        title: 'رصيد الحصص وسجل الحضور',
-                        icon: Icons.checklist_rtl_outlined,
-                        children: [
-                          _buildDetailRow('إجمالي الحصص المقررة', '${sub.sessionsCount} حصة', isBold: true),
-                          _buildDetailRow('الحصص المحضورة', '${sub.attendedSessions} حصة', valueColor: AppTheme.primaryBlue),
-                          _buildDetailRow('الحصص المتبقية', '${sub.remainingSessions} حصة', valueColor: sub.remainingSessions > 0 ? AppTheme.successGreen : AppTheme.errorRed, isBold: true),
-                          if (sub.excusedSessions > 0)
-                            _buildDetailRow('حصص معوضة بعذر طبي', '${sub.excusedSessions} حصة', valueColor: AppTheme.warningOrange),
-                          const SizedBox(height: 8),
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text('نسبة استهلاك الحصص:', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted)),
-                              Text('${(progress * 100).toInt()}%', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(6),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              minHeight: 8,
-                              backgroundColor: Colors.blueGrey.shade100,
-                              valueColor: AlwaysStoppedAnimation<Color>(
-                                isExpired ? AppTheme.errorRed : AppTheme.accentCyan,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                      // 5. البيانات المالية والتحصيل
-                      _buildSectionCard(
-                        title: 'البيانات المالية والتحصيل',
-                        icon: Icons.account_balance_wallet_outlined,
-                        children: [
-                          _buildDetailRow('سعر الاشتراك المقرر', AppFormatters.formatCurrency(sub.amountRequired)),
-                          _buildDetailRow('رسوم ختم الكارت', AppFormatters.formatCurrency(sub.stampCardFee)),
-                          const Divider(height: 10),
-                          _buildDetailRow('إجمالي المستحق (المقرر + الختم)', AppFormatters.formatCurrency(sub.totalDue), isBold: true),
-                          _buildDetailRow('المبلغ المدفوع', AppFormatters.formatCurrency(sub.amountPaid), valueColor: AppTheme.primaryBlue, isBold: true),
-                          _buildDetailRow(
-                            'المبلغ المتبقي',
-                            AppFormatters.formatCurrency(sub.amountRemaining),
-                            valueColor: isPaid ? AppTheme.successGreen : AppTheme.errorRed,
-                            isBold: true,
-                          ),
-                          const Divider(height: 10),
-                          _buildDetailRow('وسيلة الدفع', sub.paymentMethod),
-                          _buildDetailRow('تاريخ السداد', AppFormatters.formatDate(sub.paymentDate.toDate())),
-                          _buildDetailRow(
-                            'حالة الحساب',
-                            isPaid ? 'خالص بالكامل (مسدد)' : 'غير خالص (متبقي مستحقات)',
-                            valueColor: isPaid ? AppTheme.successGreen : AppTheme.warningOrange,
-                            isBold: true,
-                          ),
-                        ],
-                      ),
-
-                      const SizedBox(height: 12),
-
-                      // Action Buttons inside Modal
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF25D366),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                              ),
-                              onPressed: () async {
-                                final phone = player?.guardianPhone ?? '';
-                                if (phone.isEmpty) {
-                                  AppDialogs.showWarningSnackBar(context, 'رقم ولي الأمر غير مسجل للاعب');
-                                  return;
-                                }
-                                final msg = WhatsAppHelper.buildSubscriptionInvoiceMessage(sub: sub, isRenewal: false);
-                                await WhatsAppHelper.openWhatsApp(phone: phone, message: msg);
-                              },
-                              icon: const Icon(Icons.chat, size: 18),
-                              label: Text('إرسال الفاتورة', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12)),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          if (!isPaid) ...[
-                            Expanded(
-                              child: ElevatedButton.icon(
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: AppTheme.warningOrange,
-                                  foregroundColor: Colors.white,
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                ),
-                                onPressed: () {
-                                  Navigator.pop(ctx);
-                                  _showSettleBalanceDialog(sub);
-                                },
-                                icon: const Icon(Icons.payment, size: 18),
-                                label: Text('سداد المتبقي', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12)),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                          ],
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: AppTheme.primaryBlue,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                              ),
-                              onPressed: () {
-                                Navigator.pop(ctx);
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(builder: (_) => SubscriptionEntryScreen(preSelectedPlayer: player)),
-                                );
-                              },
-                              icon: const Icon(Icons.autorenew, size: 18),
-                              label: Text('تجديد الاشتراك', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12)),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  ),
-                ),
-              ],
-            );
-          },
-        );
-      },
+  Widget _buildMetricTile(String label, String value, Color color) {
+    return Expanded(
+      child: Container(
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.2)),
+        ),
+        child: Column(
+          children: [
+            Text(value, style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.bold, color: color)),
+            Text(label, style: GoogleFonts.cairo(fontSize: 11, color: color)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -673,7 +640,7 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                       color: isExpired ? AppTheme.errorRed.withOpacity(0.04) : Colors.white,
                       child: InkWell(
                         borderRadius: BorderRadius.circular(16),
-                        onTap: () => _showSubscriptionDetailsModal(sub),
+                        onTap: () => _showSubscriptionDetailsSheet(sub),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
@@ -739,195 +706,181 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                                       ),
                                       const SizedBox(width: 4),
                                       IconButton(
-                                        icon: const Icon(Icons.info_outline, color: AppTheme.primaryBlue, size: 21),
-                                        tooltip: 'عرض تفاصيل الاشتراك بالكامل',
+                                        icon: const Icon(Icons.info_outline, color: AppTheme.primaryBlue, size: 20),
+                                        tooltip: 'عرض تفاصيل الاشتراك الكاملة',
                                         visualDensity: VisualDensity.compact,
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(),
-                                        onPressed: () => _showSubscriptionDetailsModal(sub),
+                                        onPressed: () => _showSubscriptionDetailsSheet(sub),
                                       ),
                                       const SizedBox(width: 4),
                                       IconButton(
                                         icon: const Icon(Icons.chat, color: Color(0xFF25D366), size: 20),
                                         tooltip: 'إرسال الفاتورة عبر واتساب',
+                                      visualDensity: VisualDensity.compact,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                      onPressed: () async {
+                                        final player = LocalStore.instance.getPlayerByCode(sub.playerCode);
+                                        final phone = player?.guardianPhone ?? '';
+                                        if (phone.isEmpty) {
+                                          AppDialogs.showWarningSnackBar(
+                                            context,
+                                            'رقم ولي الأمر غير مسجل للاعب (${sub.playerName})',
+                                          );
+                                          return;
+                                        }
+                                        final msg = WhatsAppHelper.buildSubscriptionInvoiceMessage(
+                                          sub: sub,
+                                          isRenewal: false,
+                                        );
+                                        final ok = await WhatsAppHelper.openWhatsApp(
+                                          phone: phone,
+                                          message: msg,
+                                        );
+                                        if (!ok && context.mounted) {
+                                          AppDialogs.showWarningSnackBar(
+                                            context,
+                                            'تعذر فتح الواتساب. تأكد من تثبيت التطبيق وصحة الرقم ($phone)',
+                                          );
+                                        }
+                                      },
+                                    ),
+                                    if (isOwner) ...[
+                                      const SizedBox(width: 4),
+                                      IconButton(
+                                        icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed, size: 20),
+                                        tooltip: 'حذف الاشتراك (للمالك فقط)',
                                         visualDensity: VisualDensity.compact,
                                         padding: EdgeInsets.zero,
                                         constraints: const BoxConstraints(),
-                                        onPressed: () async {
-                                          final player = LocalStore.instance.getPlayerByCode(sub.playerCode);
-                                          final phone = player?.guardianPhone ?? '';
-                                          if (phone.isEmpty) {
-                                            AppDialogs.showWarningSnackBar(
-                                              context,
-                                              'رقم ولي الأمر غير مسجل للاعب (${sub.playerName})',
-                                            );
-                                            return;
-                                          }
-                                          final msg = WhatsAppHelper.buildSubscriptionInvoiceMessage(
-                                            sub: sub,
-                                            isRenewal: false,
-                                          );
-                                          final ok = await WhatsAppHelper.openWhatsApp(
-                                            phone: phone,
-                                            message: msg,
-                                          );
-                                          if (!ok && context.mounted) {
-                                            AppDialogs.showWarningSnackBar(
-                                              context,
-                                              'تعذر فتح الواتساب. تأكد من تثبيت التطبيق وصحة الرقم ($phone)',
-                                            );
-                                          }
-                                        },
+                                        onPressed: () => _confirmDeleteSubscription(sub),
                                       ),
-                                      if (isOwner) ...[
-                                        const SizedBox(width: 4),
-                                        IconButton(
-                                          icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed, size: 20),
-                                          tooltip: 'حذف الاشتراك (للمالك فقط)',
-                                          visualDensity: VisualDensity.compact,
-                                          padding: EdgeInsets.zero,
-                                          constraints: const BoxConstraints(),
-                                          onPressed: () => _confirmDeleteSubscription(sub),
-                                        ),
-                                      ],
                                     ],
-                                  ),
-                                ],
-                              ),
+                                  ],
+                                ),
+                              ],
+                            ),
 
-                              const Divider(height: 18),
+                            const Divider(height: 18),
 
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('المجموعة: ${sub.groupCode} (${sub.coachName})', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
-                                  Text('وسيلة الدفع: ${sub.paymentMethod}', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.primaryLight, fontWeight: FontWeight.bold)),
-                                ],
-                              ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('المجموعة: ${sub.groupCode} (${sub.coachName})', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold)),
+                                Text('وسيلة الدفع: ${sub.paymentMethod}', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.primaryLight, fontWeight: FontWeight.bold)),
+                              ],
+                            ),
 
-                              const SizedBox(height: 6),
+                            const SizedBox(height: 6),
 
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text('المقرر + الختم: ${AppFormatters.formatCurrency(sub.totalDue)}', style: GoogleFonts.cairo(fontSize: 12)),
-                                  Text('المدفوع: ${AppFormatters.formatCurrency(sub.amountPaid)}', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
-                                  Text(
-                                    'المتبقي: ${AppFormatters.formatCurrency(sub.amountRemaining)}',
-                                    style: GoogleFonts.cairo(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.bold,
-                                      color: isPaid ? AppTheme.successGreen : AppTheme.errorRed,
-                                    ),
-                                  ),
-                                ],
-                              ),
-
-                              const SizedBox(height: 10),
-
-                              // Progress Bar
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    'حضور الحصص: ${sub.attendedSessions} من ${sub.sessionsCount} حصة (المتبقي: ${sub.remainingSessions})',
-                                    style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
-                                  ),
-                                  Text(
-                                    '${(progress * 100).toInt()}%',
-                                    style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(6),
-                                child: LinearProgressIndicator(
-                                  value: progress,
-                                  minHeight: 6,
-                                  backgroundColor: Colors.blueGrey.shade100,
-                                  valueColor: AlwaysStoppedAnimation<Color>(
-                                    isExpired ? AppTheme.errorRed : AppTheme.accentCyan,
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('المقرر + الختم: ${AppFormatters.formatCurrency(sub.totalDue)}', style: GoogleFonts.cairo(fontSize: 12)),
+                                Text('المدفوع: ${AppFormatters.formatCurrency(sub.amountPaid)}', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                                Text(
+                                  'المتبقي: ${AppFormatters.formatCurrency(sub.amountRemaining)}',
+                                  style: GoogleFonts.cairo(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                    color: isPaid ? AppTheme.successGreen : AppTheme.errorRed,
                                   ),
                                 ),
+                              ],
+                            ),
+
+                            const SizedBox(height: 10),
+
+                            // Progress Bar
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(
+                                  'حضور الحصص: ${sub.attendedSessions} من ${sub.sessionsCount} حصة (المتبقي: ${sub.remainingSessions})',
+                                  style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
+                                ),
+                                Text(
+                                  '${(progress * 100).toInt()}%',
+                                  style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(6),
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                minHeight: 6,
+                                backgroundColor: Colors.blueGrey.shade100,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  isExpired ? AppTheme.errorRed : AppTheme.accentCyan,
+                                ),
                               ),
+                            ),
 
-                              const SizedBox(height: 12),
+                            const SizedBox(height: 12),
 
-                              // Action buttons
-                              Row(
-                                children: [
+                            // Action buttons
+                            Row(
+                              children: [
+                                if (!sub.isFullyPaid)
                                   Expanded(
                                     child: OutlinedButton.icon(
                                       style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppTheme.primaryBlue,
-                                        side: const BorderSide(color: AppTheme.primaryBlue),
+                                        foregroundColor: AppTheme.warningOrange,
+                                        side: const BorderSide(color: AppTheme.warningOrange),
                                         padding: const EdgeInsets.symmetric(vertical: 6),
                                       ),
-                                      onPressed: () => _showSubscriptionDetailsModal(sub),
-                                      icon: const Icon(Icons.visibility_outlined, size: 14),
-                                      label: Text('التفاصيل', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
+                                      onPressed: () => _showSettleBalanceDialog(sub),
+                                      icon: const Icon(Icons.payment, size: 15),
+                                      label: Text('سداد', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
-                                  if (!sub.isFullyPaid) ...[
-                                    Expanded(
-                                      child: OutlinedButton.icon(
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: AppTheme.warningOrange,
-                                          side: const BorderSide(color: AppTheme.warningOrange),
-                                          padding: const EdgeInsets.symmetric(vertical: 6),
+                                if (!sub.isFullyPaid) const SizedBox(width: 6),
+
+                                // Transfer Group Button
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: AppTheme.accentTeal,
+                                      side: const BorderSide(color: AppTheme.accentTeal),
+                                      padding: const EdgeInsets.symmetric(vertical: 6),
+                                    ),
+                                    onPressed: () => _showTransferGroupDialog(sub),
+                                    icon: const Icon(Icons.swap_horiz, size: 15),
+                                    label: Text('نقل مجموعة', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+
+                                // Quick Renewal Button
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: isExpired ? AppTheme.primaryBlue : AppTheme.accentTeal,
+                                      padding: const EdgeInsets.symmetric(vertical: 6),
+                                    ),
+                                    onPressed: () {
+                                      final player = LocalStore.instance.getPlayerByCode(sub.playerCode);
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (_) => SubscriptionEntryScreen(preSelectedPlayer: player),
                                         ),
-                                        onPressed: () => _showSettleBalanceDialog(sub),
-                                        icon: const Icon(Icons.payment, size: 14),
-                                        label: Text('سداد', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
-                                      ),
-                                    ),
-                                    const SizedBox(width: 6),
-                                  ],
-
-                                  // Transfer Group Button
-                                  Expanded(
-                                    child: OutlinedButton.icon(
-                                      style: OutlinedButton.styleFrom(
-                                        foregroundColor: AppTheme.accentTeal,
-                                        side: const BorderSide(color: AppTheme.accentTeal),
-                                        padding: const EdgeInsets.symmetric(vertical: 6),
-                                      ),
-                                      onPressed: () => _showTransferGroupDialog(sub),
-                                      icon: const Icon(Icons.swap_horiz, size: 14),
-                                      label: Text('نقل', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
-                                    ),
+                                      );
+                                    },
+                                    icon: const Icon(Icons.autorenew, size: 15),
+                                    label: Text('تجديد', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
                                   ),
-                                  const SizedBox(width: 6),
-
-                                  // Quick Renewal Button
-                                  Expanded(
-                                    child: ElevatedButton.icon(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: isExpired ? AppTheme.primaryBlue : AppTheme.accentTeal,
-                                        padding: const EdgeInsets.symmetric(vertical: 6),
-                                      ),
-                                      onPressed: () {
-                                        final player = LocalStore.instance.getPlayerByCode(sub.playerCode);
-                                        Navigator.push(
-                                          context,
-                                          MaterialPageRoute(
-                                            builder: (_) => SubscriptionEntryScreen(preSelectedPlayer: player),
-                                          ),
-                                        );
-                                      },
-                                      icon: const Icon(Icons.autorenew, size: 14),
-                                      label: Text('تجديد', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
                       ),
-                    );
+                    ),
+                  );
                   },
                 );
               },
