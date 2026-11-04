@@ -5,11 +5,11 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 import '../../features/attendance/models/attendance_model.dart';
 import '../../features/auth/models/user_model.dart';
-import '../../features/coaches_payroll/models/daily_coach_session_model.dart';
 import '../../features/groups/models/group_model.dart';
 import '../../features/owner_dashboard/models/accounting_model.dart';
 import '../../features/owner_dashboard/models/expense_model.dart';
 import '../../features/owner_dashboard/models/payroll_model.dart';
+import '../../features/coaches_payroll/models/coach_daily_session_model.dart';
 import '../../features/players/models/player_model.dart';
 import '../../features/subscriptions/models/subscription_model.dart';
 import '../../features/water_cards/models/pool_overdraft_model.dart';
@@ -268,6 +268,14 @@ class CloudSyncService {
     _subscriptions.add(
       firestore.collection('payroll').snapshots().listen(
         (snapshot) {
+          for (final change in snapshot.docChanges) {
+            if (change.type == DocumentChangeType.removed) {
+              final parts = change.doc.id.split('_');
+              if (parts.length >= 2) {
+                LocalStore.instance.removeLocalPayroll(parts[0], parts.sublist(1).join('_'));
+              }
+            }
+          }
           if (snapshot.docs.isNotEmpty) {
             final List<PayrollModel> remote = [];
             for (final doc in snapshot.docs) {
@@ -284,23 +292,28 @@ class CloudSyncService {
       ),
     );
 
-    // 11. Daily Coach Sessions
+    // 11. Coach Daily Sessions (الحصص اليومية للكباتن)
     _subscriptions.add(
-      firestore.collection('daily_coach_sessions').snapshots().listen(
+      firestore.collection('coach_daily_sessions').snapshots().listen(
         (snapshot) {
+          for (final change in snapshot.docChanges) {
+            if (change.type == DocumentChangeType.removed) {
+              LocalStore.instance.removeLocalCoachDailySession(change.doc.id);
+            }
+          }
           if (snapshot.docs.isNotEmpty) {
-            final List<DailyCoachSessionModel> remote = [];
+            final List<CoachDailySessionModel> remote = [];
             for (final doc in snapshot.docs) {
               try {
-                remote.add(DailyCoachSessionModel.fromFirestore(doc));
+                remote.add(CoachDailySessionModel.fromFirestore(doc));
               } catch (_) {}
             }
             if (remote.isNotEmpty) {
-              LocalStore.instance.mergeRemoteDailyCoachSessions(remote);
+              LocalStore.instance.mergeRemoteCoachDailySessions(remote);
             }
           }
         },
-        onError: (e) => debugPrint('Live sync daily_coach_sessions error: $e'),
+        onError: (e) => debugPrint('Live sync coach_daily_sessions error: $e'),
       ),
     );
   }
@@ -440,6 +453,7 @@ class CloudSyncService {
         'water_cards',
         'pool_overdraft_notes',
         'payroll',
+        'coach_daily_sessions',
       ];
       for (final col in collections) {
         final snap = await firestore.collection(col).get();
@@ -495,25 +509,31 @@ class CloudSyncService {
     }
   }
 
-  Future<void> pushDailyCoachSession(DailyCoachSessionModel session) async {
+  Future<void> deletePayroll(String coachId, String monthYear) async {
     try {
-      await FirebaseFirestore.instance
-          .collection('daily_coach_sessions')
-          .doc(session.id)
-          .set(session.toFirestore(), SetOptions(merge: true));
+      final docId = '${coachId}_${monthYear}';
+      await FirebaseFirestore.instance.collection('payroll').doc(docId).delete();
     } catch (e) {
-      debugPrint('CloudSync pushDailyCoachSession error: $e');
+      debugPrint('CloudSync deletePayroll error: $e');
     }
   }
 
-  Future<void> deleteDailyCoachSession(String id) async {
+  Future<void> pushCoachDailySession(CoachDailySessionModel session) async {
     try {
       await FirebaseFirestore.instance
-          .collection('daily_coach_sessions')
-          .doc(id)
-          .delete();
+          .collection('coach_daily_sessions')
+          .doc(session.id)
+          .set(session.toFirestore(), SetOptions(merge: true));
     } catch (e) {
-      debugPrint('CloudSync deleteDailyCoachSession error: $e');
+      debugPrint('CloudSync pushCoachDailySession error: $e');
+    }
+  }
+
+  Future<void> deleteCoachDailySession(String sessionId) async {
+    try {
+      await FirebaseFirestore.instance.collection('coach_daily_sessions').doc(sessionId).delete();
+    } catch (e) {
+      debugPrint('CloudSync deleteCoachDailySession error: $e');
     }
   }
 
@@ -586,11 +606,6 @@ class CloudSyncService {
         await firestore.collection('users').doc(u.uid).set(u.toFirestore(), SetOptions(merge: true));
       }
 
-      // 9. Upload Daily Coach Sessions
-      for (final d in store.getDailyCoachSessions()) {
-        await firestore.collection('daily_coach_sessions').doc(d.id).set(d.toFirestore(), SetOptions(merge: true));
-      }
-
       // Pull fresh data from cloud
       final playersSnap = await firestore.collection('players').get();
       if (playersSnap.docs.isNotEmpty) {
@@ -601,28 +616,6 @@ class CloudSyncService {
           } catch (_) {}
         }
         store.mergeRemotePlayers(pList);
-      }
-
-      final dailySnap = await firestore.collection('daily_coach_sessions').get();
-      if (dailySnap.docs.isNotEmpty) {
-        final List<DailyCoachSessionModel> dList = [];
-        for (final d in dailySnap.docs) {
-          try {
-            dList.add(DailyCoachSessionModel.fromFirestore(d));
-          } catch (_) {}
-        }
-        store.mergeRemoteDailyCoachSessions(dList);
-      }
-
-      final payrollSnap = await firestore.collection('payroll').get();
-      if (payrollSnap.docs.isNotEmpty) {
-        final List<PayrollModel> prList = [];
-        for (final d in payrollSnap.docs) {
-          try {
-            prList.add(PayrollModel.fromMap(d.data()));
-          } catch (_) {}
-        }
-        store.mergeRemotePayrolls(prList);
       }
 
       final subsSnap = await firestore.collection('subscriptions').get();
