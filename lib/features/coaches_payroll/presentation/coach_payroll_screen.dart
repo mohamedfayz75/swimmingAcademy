@@ -5,11 +5,11 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/dialogs.dart';
 import '../../../core/utils/formatters.dart';
-import '../../../data/local/local_store.dart';
 import '../../owner_dashboard/models/payroll_model.dart';
 import '../../owner_dashboard/providers/dashboard_provider.dart';
 import '../providers/coaches_payroll_provider.dart';
-import 'coach_daily_sessions_screen.dart';
+import '../../../data/local/local_store.dart';
+import 'daily_coach_sessions_screen.dart';
 
 class CoachPayrollScreen extends ConsumerStatefulWidget {
   const CoachPayrollScreen({super.key});
@@ -19,28 +19,73 @@ class CoachPayrollScreen extends ConsumerStatefulWidget {
 }
 
 class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
+  void _confirmDeletePayroll(CoachModel coach, String monthYear) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: AppTheme.errorRed),
+            const SizedBox(width: 8),
+            Text('تأكيد مسح القبض', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+          ],
+        ),
+        content: Text(
+          'هل تريد مسح مسير القبض والحساب بالكامل للكابتن «${coach.coachName}» لشهر $monthYear؟\nيمكنك إعادة احتسابه في أي وقت.',
+          style: GoogleFonts.cairo(fontSize: 13, height: 1.5),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('إلغاء')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.errorRed),
+            onPressed: () {
+              LocalStore.instance.deletePayroll(coach.coachId, monthYear);
+              Navigator.pop(ctx);
+              AppDialogs.showSuccessSnackBar(context, 'تم مسح مسير القبض بنجاح');
+              ref.invalidate(monthlyPayrollStreamProvider(monthYear));
+              ref.invalidate(monthlyAccountingProvider(monthYear));
+            },
+            child: const Text('مسح نهائي', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _openPayrollEntrySheet(CoachModel coach, String monthYear, PayrollModel? existing) {
-    // 1. Auto-calculate smart 3 periods from daily logged sessions
-    final autoCounts = LocalStore.instance.calculatePeriodSessions(coach.coachId, monthYear);
+    // Calculate live session breakdown from daily coach sessions
+    final dailySessions = LocalStore.instance.getDailyCoachSessions(coachId: coach.coachId, monthYear: monthYear);
+    int liveS1 = 0;
+    int liveS2 = 0;
+    int liveS3 = 0;
+    for (final s in dailySessions) {
+      final day = s.date.toDate().day;
+      if (day <= 10) {
+        liveS1 += s.sessionCount;
+      } else if (day <= 20) {
+        liveS2 += s.sessionCount;
+      } else {
+        liveS3 += s.sessionCount;
+      }
+    }
+    final bool hasDailyRecords = dailySessions.isNotEmpty;
+    final int defaultS1 = hasDailyRecords ? liveS1 : (existing?.sessions1To10 ?? 0);
+    final int defaultS2 = hasDailyRecords ? liveS2 : (existing?.sessions11To20 ?? 0);
+    final int defaultS3 = hasDailyRecords ? liveS3 : (existing?.sessions21To31 ?? 0);
 
-    final bool hasExistingPeriods = existing != null &&
-        (existing.sessions1To10 > 0 || existing.sessions11To20 > 0 || existing.sessions21To31 > 0);
-
-    final initialS1 = hasExistingPeriods ? existing.sessions1To10 : autoPeriodsCount(autoCounts['s1']!);
-    final initialS2 = hasExistingPeriods ? existing.sessions11To20 : autoPeriodsCount(autoCounts['s2']!);
-    final initialS3 = hasExistingPeriods ? existing.sessions21To31 : autoPeriodsCount(autoCounts['s3']!);
-
-    final s1Controller = TextEditingController(text: '$initialS1');
-    final s2Controller = TextEditingController(text: '$initialS2');
-    final s3Controller = TextEditingController(text: '$initialS3');
-
-    // Rate starts completely empty if not previously entered
-    final initialRate = (existing != null && existing.sessionRate > 0) ? '${existing.sessionRate}' : '';
-    final rateController = TextEditingController(text: initialRate);
-
-    final advanceController = TextEditingController(text: '${existing?.advancePayments ?? 0.0}');
-    final initialBonus = (existing != null && existing.bonuses > 0) ? '${existing.bonuses}' : '0.0';
-    final bonusController = TextEditingController(text: initialBonus);
+    final s1Controller = TextEditingController(text: '$defaultS1');
+    final s2Controller = TextEditingController(text: '$defaultS2');
+    final s3Controller = TextEditingController(text: '$defaultS3');
+    final rateController = TextEditingController(
+      text: existing != null && existing.sessionRate > 0
+          ? (existing.sessionRate % 1 == 0 ? existing.sessionRate.toInt().toString() : existing.sessionRate.toString())
+          : '',
+    );
+    final advanceController = TextEditingController(
+      text: existing != null && existing.advancePayments > 0
+          ? (existing.advancePayments % 1 == 0 ? existing.advancePayments.toInt().toString() : existing.advancePayments.toString())
+          : '',
+    );
     String status = existing?.paymentStatus ?? 'معلق';
 
     showModalBottomSheet(
@@ -56,11 +101,10 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
             final s3 = int.tryParse(s3Controller.text) ?? 0;
             final rate = double.tryParse(rateController.text) ?? 0.0;
             final adv = double.tryParse(advanceController.text) ?? 0.0;
-            final bonus = double.tryParse(bonusController.text) ?? 0.0;
 
             final totalSess = s1 + s2 + s3;
             final totalEarn = totalSess * rate;
-            final netPay = (totalEarn - adv + bonus) > 0 ? (totalEarn - adv + bonus) : 0.0;
+            final netPay = (totalEarn - adv) > 0 ? (totalEarn - adv) : 0.0;
 
             return Padding(
               padding: EdgeInsets.only(
@@ -87,50 +131,37 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
                         ),
                       ],
                     ),
-                    const Divider(height: 16),
+                    const Divider(height: 20),
 
-                    // Quick Smart Auto-sync Button
-                    InkWell(
-                      onTap: () {
-                        final refreshed = LocalStore.instance.calculatePeriodSessions(coach.coachId, monthYear);
-                        setModalState(() {
-                          s1Controller.text = '${refreshed['s1'] ?? 0}';
-                          s2Controller.text = '${refreshed['s2'] ?? 0}';
-                          s3Controller.text = '${refreshed['s3'] ?? 0}';
-                        });
-                        AppDialogs.showSuccessSnackBar(context, 'تم جلب وتطبيق الحصص المسجلة يومياً');
-                      },
-                      borderRadius: BorderRadius.circular(10),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    if (hasDailyRecords)
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: AppTheme.accentCyan.withOpacity(0.12),
+                          color: AppTheme.accentTeal.withOpacity(0.12),
                           borderRadius: BorderRadius.circular(10),
-                          border: Border.all(color: AppTheme.accentCyan.withOpacity(0.4)),
+                          border: Border.all(color: AppTheme.accentTeal.withOpacity(0.4)),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.sync, color: AppTheme.primaryBlue, size: 20),
+                            const Icon(Icons.auto_awesome, color: AppTheme.accentTeal, size: 20),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'تجميع تلقائي من السجل اليومي (إجمالي: ${autoCounts['total'] ?? 0} حصة)',
-                                style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+                                'تم تجميع ${(liveS1 + liveS2 + liveS3)} حصة تلقائياً من الحصص اليومية المسجلة للكابتن لهذا الشهر',
+                                style: GoogleFonts.cairo(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.bold,
+                                  color: AppTheme.accentTeal,
+                                ),
                               ),
-                            ),
-                            Text(
-                              'تطبيق الآن',
-                              style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold, color: AppTheme.accentCyan),
                             ),
                           ],
                         ),
                       ),
-                    ),
 
-                    const SizedBox(height: 14),
-
-                    Text('تسجيل الحصص حسب فترات الشهر الثلاث (قابلة للتعديل):', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
+                    Text('تسجيل الحصص حسب فترات الشهر الثلاث:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 10),
 
                     Row(
                       children: [
@@ -165,38 +196,22 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
 
                     const SizedBox(height: 14),
 
-                    // Rate, Advance & Bonus Row
                     Row(
                       children: [
                         Expanded(
-                          flex: 3,
                           child: TextField(
                             controller: rateController,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(
-                              labelText: 'سعر الحصة (ج.م)',
-                              hintText: 'أدخل السعر',
-                            ),
+                            decoration: const InputDecoration(labelText: 'سعر الحصة (ج.م)'),
                             onChanged: (_) => setModalState(() {}),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 12),
                         Expanded(
-                          flex: 3,
                           child: TextField(
                             controller: advanceController,
                             keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'السلف (ج.م)'),
-                            onChanged: (_) => setModalState(() {}),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          flex: 3,
-                          child: TextField(
-                            controller: bonusController,
-                            keyboardType: TextInputType.number,
-                            decoration: const InputDecoration(labelText: 'المكافآت (ج.م)'),
+                            decoration: const InputDecoration(labelText: 'السلف والخصومات (ج.م)'),
                             onChanged: (_) => setModalState(() {}),
                           ),
                         ),
@@ -222,16 +237,6 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
                               Text('إجمالي الاستحقاق: ${AppFormatters.formatCurrency(totalEarn)}', style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                             ],
                           ),
-                          if (bonus > 0 || adv > 0) ...[
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text('السلف المخصومة: ${AppFormatters.formatCurrency(adv)}', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.warningOrange)),
-                                Text('المكافآت المضافة: ${AppFormatters.formatCurrency(bonus)}', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.successGreen)),
-                              ],
-                            ),
-                          ],
                           const Divider(height: 12),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -276,32 +281,53 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
 
                     const SizedBox(height: 20),
 
-                    ElevatedButton.icon(
-                      onPressed: () async {
-                        final payroll = PayrollModel(
-                          coachId: coach.coachId,
-                          coachName: coach.coachName,
-                          sessions1To10: s1,
-                          sessions11To20: s2,
-                          sessions21To31: s3,
-                          sessionRate: rate,
-                          advancePayments: adv,
-                          bonuses: bonus,
-                          paymentStatus: status,
-                          payoutDate: Timestamp.now(),
-                          monthYear: monthYear,
-                        );
+                    Row(
+                      children: [
+                        Expanded(
+                          child: ElevatedButton.icon(
+                            onPressed: () async {
+                              final payroll = PayrollModel(
+                                coachId: coach.coachId,
+                                coachName: coach.coachName,
+                                sessions1To10: s1,
+                                sessions11To20: s2,
+                                sessions21To31: s3,
+                                totalSessions: totalSess,
+                                sessionRate: rate,
+                                advancePayments: adv,
+                                paymentStatus: status,
+                                payoutDate: Timestamp.now(),
+                                monthYear: monthYear,
+                              );
 
-                        await ref.read(coachesPayrollActionProvider.notifier).savePayroll(payroll);
-                        if (mounted) {
-                          Navigator.pop(ctx);
-                          AppDialogs.showSuccessSnackBar(context, 'تم حفظ مسير ومستحقات الكابتن بنجاح');
-                          ref.invalidate(monthlyPayrollStreamProvider(monthYear));
-                          ref.invalidate(monthlyAccountingProvider(monthYear));
-                        }
-                      },
-                      icon: const Icon(Icons.check),
-                      label: const Text('حفظ واحتساب الراتب'),
+                              await ref.read(coachesPayrollActionProvider.notifier).savePayroll(payroll);
+                              if (mounted) {
+                                Navigator.pop(ctx);
+                                AppDialogs.showSuccessSnackBar(context, 'تم حفظ مستحقات الكابتن بنجاح');
+                                ref.invalidate(monthlyPayrollStreamProvider(monthYear));
+                                ref.invalidate(monthlyAccountingProvider(monthYear));
+                              }
+                            },
+                            icon: const Icon(Icons.check),
+                            label: const Text('حفظ واحتساب الراتب'),
+                          ),
+                        ),
+                        if (existing != null) ...[
+                          const SizedBox(width: 8),
+                          IconButton.outlined(
+                            style: IconButton.styleFrom(
+                              foregroundColor: AppTheme.errorRed,
+                              side: const BorderSide(color: AppTheme.errorRed),
+                            ),
+                            icon: const Icon(Icons.delete_outline),
+                            tooltip: 'مسح مسير القبض',
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _confirmDeletePayroll(coach, monthYear);
+                            },
+                          ),
+                        ],
+                      ],
                     ),
                   ],
                 ),
@@ -312,8 +338,6 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
       },
     );
   }
-
-  int autoPeriodsCount(int? val) => val ?? 0;
 
   void _changeMonth(int delta) {
     final currentStr = ref.read(selectedMonthYearProvider);
@@ -337,13 +361,16 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
         title: const Text('مرتب الكباتن'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.playlist_add_check, color: Colors.white),
+            icon: const Icon(Icons.timer_outlined),
             tooltip: 'تسجيل الحصص اليومية',
             onPressed: () {
               Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => const CoachDailySessionsScreen()),
-              );
+                MaterialPageRoute(builder: (_) => const DailyCoachSessionsScreen()),
+              ).then((_) {
+                ref.invalidate(monthlyPayrollStreamProvider(monthYear));
+                ref.invalidate(monthlyAccountingProvider(monthYear));
+              });
             },
           ),
         ],
@@ -479,16 +506,6 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
                                     Text('السلف: ${AppFormatters.formatCurrency(payroll?.advancePayments ?? 0.0)}', style: GoogleFonts.cairo(fontSize: 13)),
                                   ],
                                 ),
-                                if (payroll != null && payroll.bonuses > 0) ...[
-                                  const SizedBox(height: 4),
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text('المكافآت والبدلات: ${AppFormatters.formatCurrency(payroll.bonuses)}', style: GoogleFonts.cairo(fontSize: 13, color: AppTheme.successGreen)),
-                                      const SizedBox.shrink(),
-                                    ],
-                                  ),
-                                ],
                                 const SizedBox(height: 8),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -510,31 +527,19 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
                                       child: OutlinedButton.icon(
                                         onPressed: () => _openPayrollEntrySheet(coach, monthYear, payroll),
                                         icon: const Icon(Icons.calculate),
-                                        label: const Text('الإجمالي'),
+                                        label: Text(payroll != null ? 'الإجمالي' : 'تسجيل واحتساب المسير'),
                                       ),
                                     ),
                                     if (payroll != null) ...[
                                       const SizedBox(width: 8),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                        tooltip: 'مسح / حذف مسير الشهر',
-                                        onPressed: () async {
-                                          final confirm = await AppDialogs.showConfirmDialog(
-                                            context,
-                                            title: 'حذف مسير الشهر',
-                                            message: 'هل أنت متأكد من حذف بيانات مسير كابتن ${coach.coachName} لشهر $monthYear؟\n(ملاحظة: لن يتم حذف الحصص اليومية المسجلة للكابتن في السجل اليومي)',
-                                            confirmText: 'نعم، حذف المسير',
-                                            isDestructive: true,
-                                          );
-                                          if (confirm == true) {
-                                            await ref.read(coachesPayrollActionProvider.notifier).deletePayroll(coach.coachId, monthYear);
-                                            if (context.mounted) {
-                                              AppDialogs.showSuccessSnackBar(context, 'تم حذف بيانات مسير الشهر بنجاح');
-                                              ref.invalidate(monthlyPayrollStreamProvider(monthYear));
-                                              ref.invalidate(monthlyAccountingProvider(monthYear));
-                                            }
-                                          }
-                                        },
+                                      IconButton.outlined(
+                                        style: IconButton.styleFrom(
+                                          foregroundColor: AppTheme.errorRed,
+                                          side: const BorderSide(color: AppTheme.errorRed),
+                                        ),
+                                        icon: const Icon(Icons.delete_outline, size: 20),
+                                        tooltip: 'مسح المسير والقبض',
+                                        onPressed: () => _confirmDeletePayroll(coach, monthYear),
                                       ),
                                     ],
                                   ],
