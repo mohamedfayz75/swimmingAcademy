@@ -19,28 +19,28 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDKoMDuOwBkjmUFg4Vmy73irLH7RRncK_8',
-    appId: '1:923710235290:web:1e022affe9f6f61a67f523',
-    messagingSenderId: '923710235290',
-    projectId: 'swimming-world-academy',
-    authDomain: 'swimming-world-academy.firebaseapp.com',
-    storageBucket: 'swimming-world-academy.firebasestorage.app',
+    apiKey: 'AIzaSyDDGf76SMC80YPYSQb3tCE1UANnEvKIbBM',
+    appId: '1:84036767534:android:a05af2c0ddc00a7dd3b4bf',
+    messagingSenderId: '84036767534',
+    projectId: 'swimming-world-branch-2',
+    authDomain: 'swimming-world-branch-2.firebaseapp.com',
+    storageBucket: 'swimming-world-branch-2.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDKoMDuOwBkjmUFg4Vmy73irLH7RRncK_8',
-    appId: '1:923710235290:android:1e022affe9f6f61a67f523',
-    messagingSenderId: '923710235290',
-    projectId: 'swimming-world-academy',
-    storageBucket: 'swimming-world-academy.firebasestorage.app',
+    apiKey: 'AIzaSyDDGf76SMC80YPYSQb3tCE1UANnEvKIbBM',
+    appId: '1:84036767534:android:a05af2c0ddc00a7dd3b4bf',
+    messagingSenderId: '84036767534',
+    projectId: 'swimming-world-branch-2',
+    storageBucket: 'swimming-world-branch-2.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDKoMDuOwBkjmUFg4Vmy73irLH7RRncK_8',
-    appId: '1:923710235290:ios:1e022affe9f6f61a67f523',
-    messagingSenderId: '923710235290',
-    projectId: 'swimming-world-academy',
-    storageBucket: 'swimming-world-academy.firebasestorage.app',
-    iosBundleId: 'com.swimmingworld.academy',
+    apiKey: 'AIzaSyDDGf76SMC80YPYSQb3tCE1UANnEvKIbBM',
+    appId: '1:84036767534:android:a05af2c0ddc00a7dd3b4bf',
+    messagingSenderId: '84036767534',
+    projectId: 'swimming-world-branch-2',
+    storageBucket: 'swimming-world-branch-2.firebasestorage.app',
+    iosBundleId: 'com.swimmingworld.branch2',
   );
 }

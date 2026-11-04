@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/local/local_store.dart';
+import '../../subscriptions/providers/subscription_provider.dart';
 import '../models/group_model.dart';
 import '../providers/group_provider.dart';
 
@@ -19,6 +21,8 @@ class _PoolSlotMatrixScreenState extends ConsumerState<PoolSlotMatrixScreen> {
   @override
   Widget build(BuildContext context) {
     final groupsAsync = ref.watch(groupsStreamProvider);
+    // React to subscription changes/expirations live
+    ref.watch(subscriptionsStreamProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -91,8 +95,12 @@ class _PoolSlotMatrixScreenState extends ConsumerState<PoolSlotMatrixScreen> {
                   separatorBuilder: (_, __) => const SizedBox(height: 12),
                   itemBuilder: (ctx, index) {
                     final group = dayGroups[index];
+                    final activeRegistered = LocalStore.instance.getActiveRegisteredCount(group.groupCode);
+                    final availableSeats = (group.maxCapacity - activeRegistered) > 0 ? (group.maxCapacity - activeRegistered) : 0;
+                    final isAvailable = availableSeats > 0;
+                    final status = isAvailable ? 'متاحة ($availableSeats مقاعد)' : 'مكتملة';
                     final utilization = group.maxCapacity > 0
-                        ? (group.currentRegistered / group.maxCapacity).clamp(0.0, 1.0)
+                        ? (activeRegistered / group.maxCapacity).clamp(0.0, 1.0)
                         : 0.0;
 
                     return Card(
@@ -135,17 +143,17 @@ class _PoolSlotMatrixScreenState extends ConsumerState<PoolSlotMatrixScreen> {
                                 Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                   decoration: BoxDecoration(
-                                    color: group.isAvailable
+                                    color: isAvailable
                                         ? AppTheme.successGreen.withOpacity(0.12)
                                         : AppTheme.errorRed.withOpacity(0.12),
                                     borderRadius: BorderRadius.circular(12),
                                   ),
                                   child: Text(
-                                    group.status,
+                                    status,
                                     style: GoogleFonts.cairo(
                                       fontSize: 12,
                                       fontWeight: FontWeight.bold,
-                                      color: group.isAvailable ? AppTheme.successGreen : AppTheme.errorRed,
+                                      color: isAvailable ? AppTheme.successGreen : AppTheme.errorRed,
                                     ),
                                   ),
                                 ),
@@ -179,15 +187,15 @@ class _PoolSlotMatrixScreenState extends ConsumerState<PoolSlotMatrixScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  'نسبة الإشغال: ${group.currentRegistered} من ${group.maxCapacity} مشترك',
+                                  'نسبة الإشغال: $activeRegistered من ${group.maxCapacity} مشترك',
                                   style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
                                 ),
                                 Text(
-                                  'المقاعد المتبقية: ${group.availableSeats}',
+                                  'المقاعد المتبقية: $availableSeats',
                                   style: GoogleFonts.cairo(
                                     fontSize: 12,
                                     fontWeight: FontWeight.bold,
-                                    color: group.isAvailable ? AppTheme.primaryBlue : AppTheme.errorRed,
+                                    color: isAvailable ? AppTheme.primaryBlue : AppTheme.errorRed,
                                   ),
                                 ),
                               ],
@@ -200,7 +208,7 @@ class _PoolSlotMatrixScreenState extends ConsumerState<PoolSlotMatrixScreen> {
                                 minHeight: 8,
                                 backgroundColor: Colors.blueGrey.shade100,
                                 valueColor: AlwaysStoppedAnimation<Color>(
-                                  group.isAvailable ? AppTheme.accentCyan : AppTheme.errorRed,
+                                  isAvailable ? AppTheme.accentCyan : AppTheme.errorRed,
                                 ),
                               ),
                             ),

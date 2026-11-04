@@ -151,34 +151,22 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  DropdownButtonFormField<String>(
-                    value: poolType,
-                    decoration: const InputDecoration(labelText: 'نوع المسبح / الحمام *'),
-                    items: AppConstants.poolTypes.map((p) {
-                      return DropdownMenuItem(
-                        value: p,
-                        child: Text(
-                          p == AppConstants.poolSemiOlympic ? '🏊 مسبح نصف أولمبي' : '🏖️ مسبح ترفيهي',
-                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryBlue.withOpacity(0.08),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.pool, color: AppTheme.primaryBlue, size: 20),
+                        const SizedBox(width: 8),
+                        Text(
+                          'المسبح: نصف أولمبي (المسبح الرئيسي)',
+                          style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryBlue),
                         ),
-                      );
-                    }).toList(),
-                    onChanged: (val) {
-                      if (val != null) {
-                        setModalState(() {
-                          poolType = val;
-                          if (val == AppConstants.poolSemiOlympic) {
-                            nameController.text = 'كارت نصف أولمبي جديد';
-                            priceController.text = '1500.0';
-                            sessionsController.text = '50';
-                          } else {
-                            nameController.text = 'كارت ترفيهي جديد';
-                            priceController.text = '1200.0';
-                            sessionsController.text = '40';
-                          }
-                        });
-                      }
-                    },
+                      ],
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextField(
@@ -726,7 +714,7 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'كروت المياة والاستهلاك المزدوج',
+                                    'كروت المياة والاستهلاك',
                                     style: GoogleFonts.cairo(
                                       fontSize: 16,
                                       fontWeight: FontWeight.bold,
@@ -734,7 +722,7 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                                     ),
                                   ),
                                   Text(
-                                    'متابعة وتشغيل كروت المسبحين (نصف أولمبي & ترفيهي) والملاحظات المعلقة.',
+                                    'متابعة استهلاك كارت المسبح وحصص اللاعبين والملاحظات المعلقة.',
                                     style: GoogleFonts.cairo(
                                       fontSize: 11,
                                       color: Colors.white.withOpacity(0.9),
@@ -798,7 +786,7 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                   const SizedBox(height: 20),
 
                   // ==============================================================
-                  // 1. مسبح نصف أولمبي (Semi-Olympic Pool)
+                  // كارت مسبح الأكاديمية (نصف أولمبي)
                   // ==============================================================
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -807,7 +795,7 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                         children: [
                           const Text('🏊 ', style: TextStyle(fontSize: 18)),
                           Text(
-                            '1. مسبح نصف أولمبي (Semi-Olympic)',
+                            'كارت مسبح الأكاديمية (نصف أولمبي)',
                             style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
                           ),
                         ],
@@ -833,62 +821,14 @@ class _WaterCardScreenState extends ConsumerState<WaterCardScreen> {
                     _buildEmptyPoolCard(AppConstants.poolSemiOlympic),
 
                   const SizedBox(height: 10),
-                  // قسم الملاحظات والحصص المعلقة لمسبح نصف أولمبي
+                  // قسم الملاحظات والحصص المعلقة لمسبح الأكاديمية
                   _buildPoolOverdraftSection(
                     poolType: AppConstants.poolSemiOlympic,
-                    poolTitle: 'مسبح نصف أولمبي',
+                    poolTitle: 'مسبح الأكاديمية',
                     notes: semiOlympicNotes,
                     pendingCount: semiPendingCount,
                     activeCard: semiOlympicCard,
                     accentColor: AppTheme.primaryBlue,
-                  ),
-
-                  const SizedBox(height: 28),
-
-                  // ==============================================================
-                  // 2. مسبح ترفيهي (Recreational Pool)
-                  // ==============================================================
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          const Text('🏖️ ', style: TextStyle(fontSize: 18)),
-                          Text(
-                            '2. مسبح ترفيهي (Recreational)',
-                            style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.bold, color: AppTheme.accentTeal),
-                          ),
-                        ],
-                      ),
-                      OutlinedButton.icon(
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: AppTheme.accentTeal,
-                          side: const BorderSide(color: AppTheme.accentTeal),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                        ),
-                        onPressed: () => _showNewCardDialog(initialPoolType: AppConstants.poolRecreational),
-                        icon: const Icon(Icons.add, size: 16),
-                        label: Text('كارت جديد', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-
-                  if (recreationalCard != null)
-                    _buildPoolCardView(recreationalCard, isOwner: isOwner)
-                  else
-                    _buildEmptyPoolCard(AppConstants.poolRecreational),
-
-                  const SizedBox(height: 10),
-                  // قسم الملاحظات والحصص المعلقة لمسبح ترفيهي
-                  _buildPoolOverdraftSection(
-                    poolType: AppConstants.poolRecreational,
-                    poolTitle: 'مسبح ترفيهي',
-                    notes: recreationalNotes,
-                    pendingCount: recPendingCount,
-                    activeCard: recreationalCard,
-                    accentColor: AppTheme.accentTeal,
                   ),
 
                   const SizedBox(height: 40),

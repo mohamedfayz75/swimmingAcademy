@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Aquatic Theme Palette
-  static const Color primaryBlue = Color(0xFF0F3A60); // Deep Naval Ocean
-  static const Color primaryLight = Color(0xFF1E5F8A);
-  static const Color accentCyan = Color(0xFF00B4D8);  // Aquatic Cyan
-  static const Color accentTeal = Color(0xFF009688);
-  static const Color backgroundLight = Color(0xFFF4F8FA); // Fresh Pool Water Mist
+  // Aquatic Turquoise Palette - فرع المعادي
+  static const Color primaryBlue = Color(0xFF008E9B); // Turquoise / Deep Ocean Teal
+  static const Color primaryLight = Color(0xFF00ACC1); // Bright Turquoise
+  static const Color accentCyan = Color(0xFF26C6DA);  // Aquatic Cyan
+  static const Color accentTeal = Color(0xFF00B4D8);  // Fresh Pool Sky
+  static const Color backgroundLight = Color(0xFFF2F9FA); // Fresh Pool Water Mist
   static const Color surfaceWhite = Colors.white;
   static const Color textDark = Color(0xFF1A2530);
   static const Color textMuted = Color(0xFF6B7C8E);

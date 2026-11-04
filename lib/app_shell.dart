@@ -10,8 +10,8 @@ import 'data/local/local_store.dart';
 import 'data/firebase/cloud_sync_service.dart';
 import 'features/attendance/presentation/qr_attendance_scanner_screen.dart';
 import 'features/auth/providers/auth_provider.dart';
-import 'features/coaches_payroll/presentation/coach_daily_sessions_screen.dart';
 import 'features/coaches_payroll/presentation/coach_payroll_screen.dart';
+import 'features/coaches_payroll/presentation/daily_coach_sessions_screen.dart';
 import 'features/coaches_payroll/presentation/coaches_list_screen.dart';
 import 'features/groups/presentation/groups_management_screen.dart';
 import 'features/groups/presentation/pool_slot_matrix_screen.dart';
@@ -59,17 +59,17 @@ class _AppShellState extends ConsumerState<AppShell> {
       const PlayerRegistrationScreen(),        // 2: Player Registration (تسجيل لاعب جديد)
       const SubscriptionEntryScreen(),         // 3: New Subscription Entry (اشتراك جديد)
       const WaterCardScreen(),                 // 4: Water Card Consumption (كروت المياة)
-      const PoolSlotMatrixScreen(),            // 5: Pool Matrix Schedule
-      const PlayersListScreen(),               // 6: Players Directory
-      const SubscriptionsListScreen(),         // 7: Subscriptions History
-      const CoachDailySessionsScreen(),        // 8: Coach Daily Sessions Logging (تسجيل الحصص اليومية)
+      const DailyCoachSessionsScreen(),        // 5: Daily Coach Sessions (تسجيل حصص الكباتن اليومية)
+      const PoolSlotMatrixScreen(),            // 6: Pool Matrix Schedule
+      const PlayersListScreen(),               // 7: Players Directory
+      const SubscriptionsListScreen(),         // 8: Subscriptions History
     ];
 
     // Owner Dedicated Screens
     final List<Widget> ownerScreens = [
       const OwnerDashboardScreen(),            // 9: Financial Dashboard & Closures
       const ExpensesManagementScreen(),        // 10: Expenses Management & Log
-      const CoachPayrollScreen(),              // 11: Coach Payroll & Advances
+      const CoachPayrollScreen(),              // 11: Coach Payroll & Advances (مرتب الكباتن)
       const CoachesListScreen(),               // 12: Coaches Directory
       const GroupsManagementScreen(),          // 13: Groups Management
       const UserManagementScreen(),            // 14: Staff & Users Management
@@ -93,10 +93,10 @@ class _AppShellState extends ConsumerState<AppShell> {
       'تسجيل لاعب جديد',
       'تسجيل وحجز اشتراك جديد',
       'كروت المياة والاستهلاك',
+      'تسجيل حصص الكباتن اليومية',
       'جدول المواعيد وسعة الحارات',
       'دليل وبيانات اللاعبين',
       'سجل الاشتراكات والتحصيل',
-      'تسجيل الحصص اليومية للكباتن',
       if (isOwner) ...[
         'اللوحة المالية والتقفيل الشهري',
         'سجل وإدارة المصروفات',
@@ -245,8 +245,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.calendar_month, color: AppTheme.primaryBlue),
-              title: Text('جدول المواعيد وسعة الحارات', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.timer_outlined, color: AppTheme.primaryBlue),
+              title: Text('تسجيل حصص الكباتن اليومية', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 5,
               onTap: () {
                 setState(() => _currentIndex = 5);
@@ -254,8 +254,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.people, color: AppTheme.primaryBlue),
-              title: Text('دليل وبيانات اللاعبين', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.calendar_month, color: AppTheme.primaryBlue),
+              title: Text('جدول المواعيد وسعة الحارات', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 6,
               onTap: () {
                 setState(() => _currentIndex = 6);
@@ -263,8 +263,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.receipt_long, color: AppTheme.primaryBlue),
-              title: Text('سجل الاشتراكات والتحصيل', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.people, color: AppTheme.primaryBlue),
+              title: Text('دليل وبيانات اللاعبين', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 7,
               onTap: () {
                 setState(() => _currentIndex = 7);
@@ -272,8 +272,8 @@ class _AppShellState extends ConsumerState<AppShell> {
               },
             ),
             ListTile(
-              leading: const Icon(Icons.playlist_add_check, color: AppTheme.primaryBlue),
-              title: Text('تسجيل الحصص اليومية للكباتن', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              leading: const Icon(Icons.receipt_long, color: AppTheme.primaryBlue),
+              title: Text('سجل الاشتراكات والتحصيل', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 8,
               onTap: () {
                 setState(() => _currentIndex = 8);
