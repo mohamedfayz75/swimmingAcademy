@@ -42,8 +42,17 @@ class CoachesPayrollRepository {
     _store.deletePayroll(coachId, monthYear);
   }
 
+  Future<void> seedInitialCoachesIfEmpty() async {
+    // Coached list initialized
+  }
+
   // Stream daily sessions
-  Stream<List<CoachDailySessionModel>> streamDailySessions() {
+  Stream<List<CoachDailySessionModel>> streamDailySessions({String? coachId}) {
+    if (coachId != null && coachId.isNotEmpty) {
+      return _store.coachDailySessionsStream.map(
+        (list) => list.where((s) => s.coachId == coachId).toList(),
+      );
+    }
     return _store.coachDailySessionsStream;
   }
 
