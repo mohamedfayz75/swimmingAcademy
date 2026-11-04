@@ -314,9 +314,6 @@ class _CoachPayrollScreenState extends ConsumerState<CoachPayrollScreen> {
   }
 
   int autoPeriodsCount(int? val) => val ?? 0;
-      },
-    );
-  }
 
   void _changeMonth(int delta) {
     final currentStr = ref.read(selectedMonthYearProvider);
