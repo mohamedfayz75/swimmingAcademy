@@ -123,7 +123,7 @@ class WhatsAppHelper {
         ? '✅ *حالة السداد:* مدفوع بالكامل (خالص)'
         : '⚠️ *حالة السداد:* متبقي ${AppFormatters.formatCurrency(remaining)}';
 
-    return '🏊‍♂️ *أكاديمية عالم السباحة (فندق اللؤلؤة المعادي)* 🏊‍♂️\n'
+    return '🏊‍♂️ *أكاديمية عالم السباحة (دار المشاة)* 🏊‍♂️\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
         '$title\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
@@ -148,7 +148,7 @@ class WhatsAppHelper {
 
   /// Generate WhatsApp message for new player registration
   static String buildPlayerWelcomeMessage(PlayerModel player) {
-    return '🏊‍♂️ *أكاديمية عالم السباحة (فندق اللؤلؤة المعادي)* 🏊‍♂️\n'
+    return '🏊‍♂️ *أكاديمية عالم السباحة (دار المشاة)* 🏊‍♂️\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
         '🎉 *أهلاً بك في أسرة الأكاديمية!* 🎉\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
@@ -162,5 +162,26 @@ class WhatsAppHelper {
         '💡 يُرجى الاحتفاظ بصورة الكارت على هاتفك لإبرازه عند بوابة المسبح.\n'
         '━━━━━━━━━━━━━━━━━━━━━\n'
         'نتمنى لكم ولأبطالنا تجربة رياضية مميزة ومليئة بالبطولات! 🥇';
+  }
+
+  /// Generate WhatsApp confirmation message for coach daily sessions
+  static String buildCoachDailySessionMessage({
+    required String coachName,
+    required String date,
+    required int sessionsCount,
+    String notes = '',
+  }) {
+    final notesText = notes.trim().isNotEmpty ? '📝 *ملاحظات:* ${notes.trim()}\n' : '';
+    return '🏊‍♂️ *أكاديمية عالم السباحة (دار المشاة)* 🏊‍♂️\n'
+        '━━━━━━━━━━━━━━━━━━━━━\n'
+        '📋 *إشعار تسجيل حصص تدريبية*\n'
+        '━━━━━━━━━━━━━━━━━━━━━\n'
+        '👤 *الكابتن:* كابتن $coachName\n'
+        '🗓️ *التاريخ:* $date\n'
+        '🎯 *عدد الحصص المسجلة:* $sessionsCount حصة\n'
+        '$notesText'
+        '━━━━━━━━━━━━━━━━━━━━━\n'
+        '✅ تم اعتماد وتسجيل الحصص بنجاح في المنظومة.\n'
+        '🌟 نتمنى لك دوام التوفيق والتميز!';
   }
 }
