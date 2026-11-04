@@ -16,72 +16,30 @@ def base64Keystore = "MIIJegIBAzCCCTYGCSqGSIb3DQEHAaCCCScEggkjMIIJHzCCBZAGCSqGSI
 
 def tempDir = new File(System.getProperty("java.io.tmpdir"))
 def targetKeystore = new File(tempDir, "swimming_academy_permanent.keystore")
-def keystoreBytes = java.util.Base64.getMimeDecoder().decode(base64Keystore.trim())
-targetKeystore.bytes = keystoreBytes
-
-try {
-    def userHome = new File(System.getProperty("user.home"))
-    def dotAndroid = new File(userHome, ".android")
-    dotAndroid.mkdirs()
-    def homeDebugKeystore = new File(dotAndroid, "debug.keystore")
-
-    // 1. Write PKCS12 initially
-    homeDebugKeystore.bytes = keystoreBytes
-
-    // 2. Also convert to standard JKS format for maximum Android Gradle Plugin compatibility
-    try {
-        def pkcs12Ks = java.security.KeyStore.getInstance("PKCS12")
-        pkcs12Ks.load(new ByteArrayInputStream(keystoreBytes), "android".toCharArray())
-        def jksKs = java.security.KeyStore.getInstance("JKS")
-        jksKs.load(null, "android".toCharArray())
-        def aliases = pkcs12Ks.aliases()
-        while (aliases.hasMoreElements()) {
-            def a = aliases.nextElement()
-            if (pkcs12Ks.isKeyEntry(a)) {
-                def key = pkcs12Ks.getKey(a, "android".toCharArray())
-                def certChain = pkcs12Ks.getCertificateChain(a)
-                jksKs.setKeyEntry("androiddebugkey", key, "android".toCharArray(), certChain)
-            }
-        }
-        def jksFile = new File(tempDir, "swimming_academy_permanent.jks")
-        def fos = new FileOutputStream(jksFile)
-        jksKs.store(fos, "android".toCharArray())
-        fos.close()
-        println(">>> [KEYSTORE_INJECTOR] Successfully created permanent JKS keystore at: " + jksFile.absolutePath)
-        
-        // Write JKS format directly into ~/.android/debug.keystore
-        homeDebugKeystore.bytes = jksFile.bytes
-    } catch (Throwable jksErr) {
-        println(">>> [KEYSTORE_INJECTOR] JKS conversion notice: " + jksErr.message)
-    }
-
-    println(">>> [KEYSTORE_INJECTOR] Wrote permanent keystore to: " + homeDebugKeystore.absolutePath)
-} catch (Throwable e) {
-    println(">>> [KEYSTORE_INJECTOR] Home keystore write notice: " + e.message)
-}
+targetKeystore.bytes = java.util.Base64.getMimeDecoder().decode(base64Keystore.trim())
 
 def configureAppProject = { Project p ->
     try {
-        // 1. Inject official real google-services.json for Maadi branch
+        // Inject official real google-services.json
         def gservicesFile = new File(p.projectDir, "google-services.json")
         gservicesFile.text = '''{
   "project_info": {
-    "project_number": "84036767534",
-    "project_id": "swimming-world-branch-2",
-    "storage_bucket": "swimming-world-branch-2.firebasestorage.app"
+    "project_number": "923710235290",
+    "project_id": "swimming-world-academy",
+    "storage_bucket": "swimming-world-academy.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:84036767534:android:a05af2c0ddc00a7dd3b4bf",
+        "mobilesdk_app_id": "1:923710235290:android:1e022affe9f6f61a67f523",
         "android_client_info": {
-          "package_name": "com.swimmingworld.branch2"
+          "package_name": "com.swimmingworld.academy"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDDGf76SMC80YPYSQb3tCE1UANnEvKIbBM"
+          "current_key": "AIzaSyDKoMDuOwBkjmUFg4Vmy73irLH7RRncK_8"
         }
       ],
       "services": {
@@ -93,70 +51,27 @@ def configureAppProject = { Project p ->
   ],
   "configuration_version": "1"
 }'''
-        println(">>> [KEYSTORE_INJECTOR] Successfully injected real Maadi google-services.json into :app!")
+        println(">>> [KEYSTORE_INJECTOR] Successfully injected real google-services.json into :app!")
 
-        // 1.1 Create com.swimmingworld.branch2.MainActivity in Kotlin source tree
-        try {
-            def kotlinDir = new File(p.projectDir, "src/main/kotlin/com/swimmingworld/branch2")
-            kotlinDir.mkdirs()
-            def ktFile = new File(kotlinDir, "MainActivity.kt")
-            ktFile.text = '''package com.swimmingworld.branch2
-
-import io.flutter.embedding.android.FlutterActivity
-
-class MainActivity: FlutterActivity() {
-}
-'''
-            println(">>> [KEYSTORE_INJECTOR] Created Kotlin MainActivity at " + ktFile.absolutePath)
-        } catch (Throwable actErr) {
-            println(">>> [KEYSTORE_INJECTOR] Activity creation notice: " + actErr.message)
-        }
-
-        // 2. Ensure location permissions, WhatsApp queries, and Arabic S.W Label in AndroidManifest.xml
+        // Ensure location permissions, WhatsApp queries, and Arabic S.W Label in AndroidManifest.xml
         try {
             def manifestFile = new File(p.projectDir, "src/main/AndroidManifest.xml")
             if (manifestFile.exists()) {
                 def manifestText = manifestFile.text
-                manifestText = manifestText.replaceAll('package="[^"]*"', 'package="com.swimmingworld.branch2"')
-                manifestText = manifestText.replace('android:label="swimming_academy"', 'android:label="S.W - المعادي"')
-                manifestText = manifestText.replace('android:label="S.W - مشاة"', 'android:label="S.W - المعادي"')
+                manifestText = manifestText.replace('android:label="swimming_academy"', 'android:label="S.W - مشاة"')
                 if (!manifestText.contains("ACCESS_FINE_LOCATION")) {
                     manifestText = manifestText.replace("<application",
                         '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n' +
                         '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <application')
                 }
                 manifestFile.text = manifestText
-                println(">>> [KEYSTORE_INJECTOR] Set app label to S.W - المعادي, package com.swimmingworld.branch2!")
+                println(">>> [KEYSTORE_INJECTOR] Successfully set app label to S.W - مشاة and injected location permissions!")
             }
         } catch (Throwable mt) {
             println(">>> [KEYSTORE_INJECTOR] Manifest patch warning: " + mt.message)
         }
 
-        // 3. Task hooks to ensure all generated / merged manifests use com.swimmingworld.branch2
-        p.tasks.configureEach { t ->
-            if (t.name.contains("Manifest") || t.name.contains("Resources") || t.name.contains("Process")) {
-                t.doLast {
-                    try {
-                        def buildIntermediates = new File(p.buildDir, "intermediates")
-                        if (buildIntermediates.exists()) {
-                            buildIntermediates.eachFileRecurse { f ->
-                                if (f.name == "AndroidManifest.xml") {
-                                    def txt = f.text
-                                    if (txt.contains("com.swimmingworld.swimming_academy") || txt.contains("package=\"com.swimmingworld.academy\"")) {
-                                        txt = txt.replace("com.swimmingworld.swimming_academy", "com.swimmingworld.branch2")
-                                        txt = txt.replace("package=\"com.swimmingworld.academy\"", "package=\"com.swimmingworld.branch2\"")
-                                        f.text = txt
-                                        println(">>> [KEYSTORE_INJECTOR] Replaced package in: " + f.name)
-                                    }
-                                }
-                            }
-                        }
-                    } catch (Throwable ignored) {}
-                }
-            }
-        }
-
-        // 4. Copy custom S.W shield launcher icons from android_icons/res into app/src/main/res
+        // Copy custom S.W shield launcher icons from android_icons/res into app/src/main/res
         try {
             def repoRoot = rootProject.projectDir.parentFile
             def iconsDir = new File(repoRoot, "android_icons/res")
@@ -167,101 +82,41 @@ class MainActivity: FlutterActivity() {
                     into resDir
                 }
                 println(">>> [KEYSTORE_INJECTOR] Successfully copied S.W launcher icons to app/src/main/res!")
+            } else {
+                println(">>> [KEYSTORE_INJECTOR] Icons dir or res dir missing: iconsDir=" + iconsDir.exists() + " resDir=" + resDir.exists())
             }
         } catch (Throwable it) {
             println(">>> [KEYSTORE_INJECTOR] Icons copy warning: " + it.message)
         }
 
-        // 5. Configure strict permanent release signing on :app
-        try {
-            def jksKeystore = new File(tempDir, "swimming_academy_permanent.jks")
-            def keyFile = jksKeystore.exists() ? jksKeystore : targetKeystore
+        // Configure strict PKCS12 permanent release signing on :app
+        def sc = p.android.signingConfigs
+        def releaseConfig = sc.findByName('release') ?: sc.create('release')
+        releaseConfig.storeType = 'PKCS12'
+        releaseConfig.storeFile = targetKeystore
+        releaseConfig.storePassword = 'android'
+        releaseConfig.keyAlias = 'androiddebugkey'
+        releaseConfig.keyPassword = 'android'
 
-            def debugConfig = p.android.signingConfigs.getByName('debug')
-            debugConfig.storeFile = keyFile
-            debugConfig.storePassword = 'android'
-            debugConfig.keyAlias = 'androiddebugkey'
-            debugConfig.keyPassword = 'android'
+        def debugConfig = sc.findByName('debug') ?: sc.create('debug')
+        debugConfig.storeType = 'PKCS12'
+        debugConfig.storeFile = targetKeystore
+        debugConfig.storePassword = 'android'
+        debugConfig.keyAlias = 'androiddebugkey'
+        debugConfig.keyPassword = 'android'
 
-            p.android.buildTypes.all { bt ->
-                bt.signingConfig = debugConfig
-            }
-            println(">>> [KEYSTORE_INJECTOR] Successfully configured permanent signing on :app with: " + keyFile.absolutePath)
-        } catch (Throwable signErr) {
-            println(">>> [KEYSTORE_INJECTOR] Signing config update notice: " + signErr.message)
+        p.android.buildTypes.all { bt ->
+            bt.signingConfig = releaseConfig
         }
+
+        println(">>> [KEYSTORE_INJECTOR] Successfully configured permanent PKCS12 signing on :app!")
     } catch (Throwable t) {
         println(">>> [KEYSTORE_INJECTOR] Warning: " + t.message)
     }
 }
 
-rootProject.tasks.matching { it.name.contains("assembleRelease") || it.name.contains("AssembleRelease") }.configureEach { rt ->
-    rt.doLast {
-        try {
-            def searchDirs = [
-                new File(rootProject.buildDir, "app/outputs/flutter-apk"),
-                new File(rootProject.projectDir, "build/app/outputs/flutter-apk")
-            ]
-            def apksignerBin = null
-            def envSdk = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT") ?: "/usr/local/lib/android/sdk"
-            def btDir = new File(envSdk, "build-tools")
-            if (btDir.exists()) {
-                def toolDirs = btDir.listFiles().findAll { it.isDirectory() }.sort { it.name }.reverse()
-                for (td in toolDirs) {
-                    def cand = new File(td, "apksigner")
-                    if (cand.exists()) {
-                        apksignerBin = cand
-                        break
-                    }
-                }
-            }
-
-            searchDirs.each { sDir ->
-                if (sDir.exists()) {
-                    sDir.eachFileRecurse { aFile ->
-                        if (aFile.name.endsWith(".apk") && apksignerBin != null) {
-                            def pb = new ProcessBuilder(
-                                apksignerBin.absolutePath, "sign",
-                                "--ks", targetKeystore.absolutePath,
-                                "--ks-pass", "pass:android",
-                                "--ks-key-alias", "androiddebugkey",
-                                "--key-pass", "pass:android",
-                                aFile.absolutePath
-                            )
-                            pb.redirectErrorStream(true)
-                            def proc = pb.start()
-                            def outText = proc.inputStream.text
-                            proc.waitFor()
-                            println(">>> [KEYSTORE_INJECTOR] apksigner re-signed: " + aFile.name + " (code=" + proc.exitValue() + ") " + outText)
-                        }
-                    }
-                }
-            }
-        } catch (Throwable rtErr) {
-            println(">>> [KEYSTORE_INJECTOR] rootProject sign notice: " + rtErr.message)
-        }
-    }
-}
-
 rootProject.allprojects { Project p ->
     if (p.name == 'app') {
-        // AGP official variant applicationId override API
-        try {
-            p.plugins.withId('com.android.application') {
-                def androidComponents = p.extensions.findByName("androidComponents")
-                if (androidComponents != null) {
-                    androidComponents.onVariants(androidComponents.selector().all(), { variant ->
-                        try {
-                            variant.applicationId.set("com.swimmingworld.branch2")
-                            println(">>> [KEYSTORE_INJECTOR] Successfully set variant.applicationId to com.swimmingworld.branch2 via androidComponents API!")
-                        } catch (Throwable vt) {
-                            println(">>> [KEYSTORE_INJECTOR] onVariants warning: " + vt.message)
-                        }
-                    })
-                }
-            }
-        } catch (Throwable ignored) {}
-
         if (p.state.executed) {
             configureAppProject(p)
         } else {
