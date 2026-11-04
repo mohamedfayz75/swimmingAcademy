@@ -1367,8 +1367,14 @@ class LocalStore {
     CloudSyncService.instance.deleteCoachDailySession(sessionId);
   }
 
+  int getActiveRegisteredCount(String groupCode) {
+    return _subscriptions
+        .where((s) => s.groupCode == groupCode && !s.isExpired)
+        .length;
+  }
+
   // فرز وتجميع الحصص حسب فترات الشهر الثلاث تلقائياً
-  ({int p1, int p2, int p3, int total}) calculatePeriodSessions(String coachId, String monthYear) {
+  Map<String, int> calculatePeriodSessions(String coachId, String monthYear) {
     int p1 = 0;
     int p2 = 0;
     int p3 = 0;
@@ -1405,7 +1411,16 @@ class LocalStore {
       }
     }
 
-    return (p1: p1, p2: p2, p3: p3, total: p1 + p2 + p3);
+    final total = p1 + p2 + p3;
+    return {
+      's1': p1,
+      's2': p2,
+      's3': p3,
+      'p1': p1,
+      'p2': p2,
+      'p3': p3,
+      'total': total,
+    };
   }
 
   // --- Expenses & Accounting ---
@@ -1488,8 +1503,8 @@ class LocalStore {
       final isWaterCard = e.category.contains('مياه') ||
           e.category.contains('كروت') ||
           e.id.startsWith('EXP-WC') ||
-          e.title.contains('كارت مياه') ||
-          e.title.contains('كرت مياه');
+          e.notes.contains('كارت مياه') ||
+          e.notes.contains('كرت مياه');
 
       if (isWaterCard) {
         allTimeWaterCardExpenses += e.amount;
