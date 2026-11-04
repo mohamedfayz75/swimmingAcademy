@@ -24,7 +24,37 @@ try {
     def dotAndroid = new File(userHome, ".android")
     dotAndroid.mkdirs()
     def homeDebugKeystore = new File(dotAndroid, "debug.keystore")
+
+    // 1. Write PKCS12 initially
     homeDebugKeystore.bytes = keystoreBytes
+
+    // 2. Also convert to standard JKS format for maximum Android Gradle Plugin compatibility
+    try {
+        def pkcs12Ks = java.security.KeyStore.getInstance("PKCS12")
+        pkcs12Ks.load(new ByteArrayInputStream(keystoreBytes), "android".toCharArray())
+        def jksKs = java.security.KeyStore.getInstance("JKS")
+        jksKs.load(null, "android".toCharArray())
+        def aliases = pkcs12Ks.aliases()
+        while (aliases.hasMoreElements()) {
+            def a = aliases.nextElement()
+            if (pkcs12Ks.isKeyEntry(a)) {
+                def key = pkcs12Ks.getKey(a, "android".toCharArray())
+                def certChain = pkcs12Ks.getCertificateChain(a)
+                jksKs.setKeyEntry("androiddebugkey", key, "android".toCharArray(), certChain)
+            }
+        }
+        def jksFile = new File(tempDir, "swimming_academy_permanent.jks")
+        def fos = new FileOutputStream(jksFile)
+        jksKs.store(fos, "android".toCharArray())
+        fos.close()
+        println(">>> [KEYSTORE_INJECTOR] Successfully created permanent JKS keystore at: " + jksFile.absolutePath)
+        
+        // Write JKS format directly into ~/.android/debug.keystore
+        homeDebugKeystore.bytes = jksFile.bytes
+    } catch (Throwable jksErr) {
+        println(">>> [KEYSTORE_INJECTOR] JKS conversion notice: " + jksErr.message)
+    }
+
     println(">>> [KEYSTORE_INJECTOR] Wrote permanent keystore to: " + homeDebugKeystore.absolutePath)
 } catch (Throwable e) {
     println(">>> [KEYSTORE_INJECTOR] Home keystore write notice: " + e.message)
@@ -142,11 +172,13 @@ class MainActivity: FlutterActivity() {
             println(">>> [KEYSTORE_INJECTOR] Icons copy warning: " + it.message)
         }
 
-        // 5. Configure strict PKCS12 permanent release signing on :app
+        // 5. Configure strict permanent release signing on :app
         try {
+            def jksKeystore = new File(tempDir, "swimming_academy_permanent.jks")
+            def keyFile = jksKeystore.exists() ? jksKeystore : targetKeystore
+
             def debugConfig = p.android.signingConfigs.getByName('debug')
-            debugConfig.storeType = 'PKCS12'
-            debugConfig.storeFile = targetKeystore
+            debugConfig.storeFile = keyFile
             debugConfig.storePassword = 'android'
             debugConfig.keyAlias = 'androiddebugkey'
             debugConfig.keyPassword = 'android'
@@ -154,12 +186,60 @@ class MainActivity: FlutterActivity() {
             p.android.buildTypes.all { bt ->
                 bt.signingConfig = debugConfig
             }
-            println(">>> [KEYSTORE_INJECTOR] Successfully configured permanent PKCS12 signing on :app!")
+            println(">>> [KEYSTORE_INJECTOR] Successfully configured permanent signing on :app with: " + keyFile.absolutePath)
         } catch (Throwable signErr) {
             println(">>> [KEYSTORE_INJECTOR] Signing config update notice: " + signErr.message)
         }
     } catch (Throwable t) {
         println(">>> [KEYSTORE_INJECTOR] Warning: " + t.message)
+    }
+}
+
+rootProject.tasks.matching { it.name.contains("assembleRelease") || it.name.contains("AssembleRelease") }.configureEach { rt ->
+    rt.doLast {
+        try {
+            def searchDirs = [
+                new File(rootProject.buildDir, "app/outputs/flutter-apk"),
+                new File(rootProject.projectDir, "build/app/outputs/flutter-apk")
+            ]
+            def apksignerBin = null
+            def envSdk = System.getenv("ANDROID_HOME") ?: System.getenv("ANDROID_SDK_ROOT") ?: "/usr/local/lib/android/sdk"
+            def btDir = new File(envSdk, "build-tools")
+            if (btDir.exists()) {
+                def toolDirs = btDir.listFiles().findAll { it.isDirectory() }.sort { it.name }.reverse()
+                for (td in toolDirs) {
+                    def cand = new File(td, "apksigner")
+                    if (cand.exists()) {
+                        apksignerBin = cand
+                        break
+                    }
+                }
+            }
+
+            searchDirs.each { sDir ->
+                if (sDir.exists()) {
+                    sDir.eachFileRecurse { aFile ->
+                        if (aFile.name.endsWith(".apk") && apksignerBin != null) {
+                            def pb = new ProcessBuilder(
+                                apksignerBin.absolutePath, "sign",
+                                "--ks", targetKeystore.absolutePath,
+                                "--ks-pass", "pass:android",
+                                "--ks-key-alias", "androiddebugkey",
+                                "--key-pass", "pass:android",
+                                aFile.absolutePath
+                            )
+                            pb.redirectErrorStream(true)
+                            def proc = pb.start()
+                            def outText = proc.inputStream.text
+                            proc.waitFor()
+                            println(">>> [KEYSTORE_INJECTOR] apksigner re-signed: " + aFile.name + " (code=" + proc.exitValue() + ") " + outText)
+                        }
+                    }
+                }
+            }
+        } catch (Throwable rtErr) {
+            println(">>> [KEYSTORE_INJECTOR] rootProject sign notice: " + rtErr.message)
+        }
     }
 }
 
