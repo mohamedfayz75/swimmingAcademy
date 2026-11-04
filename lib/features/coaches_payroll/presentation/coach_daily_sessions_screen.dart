@@ -66,20 +66,15 @@ class _CoachDailySessionsScreenState extends ConsumerState<CoachDailySessionsScr
     setState(() => _isSaving = true);
 
     try {
-      final dateStr = DateFormat('yyyy-MM-dd').format(_selectedDate);
-      final monthYearStr = DateFormat('MM-yyyy').format(_selectedDate);
-
       final session = CoachDailySessionModel(
         id: 'CDS-${DateTime.now().millisecondsSinceEpoch}',
         coachId: _selectedCoach!.coachId,
         coachName: _selectedCoach!.coachName,
-        date: dateStr,
-        dayOfMonth: _selectedDate.day,
-        monthYear: monthYearStr,
+        date: _selectedDate,
         sessionsCount: _sessionsCount,
         notes: _notesController.text.trim(),
         loggedBy: currentUser.isNotEmpty ? currentUser : 'الإدارة',
-        createdAt: Timestamp.now(),
+        loggedAt: DateTime.now(),
       );
 
       await ref.read(coachesPayrollActionProvider.notifier).addDailySession(session);
@@ -138,7 +133,7 @@ class _CoachDailySessionsScreenState extends ConsumerState<CoachDailySessionsScr
     );
 
     if (send == true) {
-      _sendWhatsAppMessage(coach.phoneNumber, coach.coachName, session.date, session.sessionsCount, session.notes);
+      _sendWhatsAppMessage(coach.phoneNumber, coach.coachName, session.dateFormatted, session.sessionsCount, session.notes);
     }
   }
 
@@ -159,7 +154,7 @@ class _CoachDailySessionsScreenState extends ConsumerState<CoachDailySessionsScr
   Widget build(BuildContext context) {
     final coachesAsync = ref.watch(coachesStreamProvider);
     final sessionsAsync = ref.watch(coachDailySessionsStreamProvider(null));
-    final currentUser = ref.watch(currentUserProvider)?.username ?? 'الإدارة';
+    final currentUser = ref.watch(currentUserProvider).value?.username ?? 'الإدارة';
 
     final formattedDate = DateFormat('yyyy-MM-dd').format(_selectedDate);
 
@@ -423,7 +418,7 @@ class _CoachDailySessionsScreenState extends ConsumerState<CoachDailySessionsScr
                                               borderRadius: BorderRadius.circular(6),
                                             ),
                                             child: Text(
-                                              item.date,
+                                              item.dateFormatted,
                                               style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey.shade700),
                                             ),
                                           ),
@@ -454,7 +449,7 @@ class _CoachDailySessionsScreenState extends ConsumerState<CoachDailySessionsScr
                                       AppDialogs.showWarningSnackBar(context, 'رقم هاتف الكابتن غير مسجل');
                                       return;
                                     }
-                                    _sendWhatsAppMessage(coach.phoneNumber, coach.coachName, item.date, item.sessionsCount, item.notes);
+                                    _sendWhatsAppMessage(coach.phoneNumber, coach.coachName, item.dateFormatted, item.sessionsCount, item.notes);
                                   },
                                 ),
 
@@ -466,7 +461,7 @@ class _CoachDailySessionsScreenState extends ConsumerState<CoachDailySessionsScr
                                     final confirm = await AppDialogs.showConfirmDialog(
                                       context,
                                       title: 'حذف تسجيل الحصص',
-                                      message: 'هل أنت متأكد من حذف تسجيل (${item.sessionsCount} حصص) لكابتن ${item.coachName} بتاريخ ${item.date}؟',
+                                      message: 'هل أنت متأكد من حذف تسجيل (${item.sessionsCount} حصص) لكابتن ${item.coachName} بتاريخ ${item.dateFormatted}؟',
                                       confirmText: 'نعم، حذف',
                                       isDestructive: true,
                                     );
