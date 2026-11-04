@@ -172,28 +172,14 @@ class MainActivity: FlutterActivity() {
             println(">>> [KEYSTORE_INJECTOR] Icons copy warning: " + it.message)
         }
 
-        // 5. Configure strict permanent release signing on :app
-        try {
-            def jksKeystore = new File(tempDir, "swimming_academy_permanent.jks")
-            def keyFile = jksKeystore.exists() ? jksKeystore : targetKeystore
-
-            def debugConfig = p.android.signingConfigs.getByName('debug')
-            debugConfig.storeFile = keyFile
-            debugConfig.storePassword = 'android'
-            debugConfig.keyAlias = 'androiddebugkey'
-            debugConfig.keyPassword = 'android'
-
-            p.android.buildTypes.all { bt ->
-                bt.signingConfig = debugConfig
-            }
-            println(">>> [KEYSTORE_INJECTOR] Successfully configured permanent signing on :app with: " + keyFile.absolutePath)
-        } catch (Throwable signErr) {
-            println(">>> [KEYSTORE_INJECTOR] Signing config update notice: " + signErr.message)
-        }
+        // 5. Permanent signing note
+        println(">>> [KEYSTORE_INJECTOR] Permanent keystore ready at: " + targetKeystore.absolutePath)
     } catch (Throwable t) {
         println(">>> [KEYSTORE_INJECTOR] Warning: " + t.message)
     }
 }
+
+def outerRepoRoot = rootProject.projectDir.parentFile
 
 gradle.buildFinished {
     try {
@@ -215,14 +201,15 @@ gradle.buildFinished {
         def signerExec = apksignerBin ? apksignerBin.absolutePath : "apksigner"
 
         def searchRoots = [
-            new File(".").canonicalFile,
-            new File("..").canonicalFile,
-            new File("../build").canonicalFile
+            outerRepoRoot,
+            rootProject.projectDir,
+            new File("/home/runner/work/swimmingAcademy/swimmingAcademy")
         ]
 
         def apkFilesToSign = [] as Set
         searchRoots.each { sRoot ->
-            if (sRoot.exists()) {
+            if (sRoot != null && sRoot.exists()) {
+                println(">>> [KEYSTORE_INJECTOR] Scanning for APKs in: " + sRoot.absolutePath)
                 sRoot.eachFileRecurse { f ->
                     if (f.name.endsWith(".apk") && !f.name.contains("unaligned") && !f.name.contains("unsigned")) {
                         apkFilesToSign.add(f)
