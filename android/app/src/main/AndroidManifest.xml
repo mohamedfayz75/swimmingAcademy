@@ -26,9 +26,10 @@
     </queries>
 
     <application
-        android:label="أكاديمية عالم السباحة"
+        android:label="S.W - مشاة"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true">
         <activity
             android:name=".MainActivity"
