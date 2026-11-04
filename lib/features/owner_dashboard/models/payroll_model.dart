@@ -91,7 +91,8 @@ class PayrollModel {
   final int totalSessions; // إجمالي الحصص المسجلة يومياً خلال الشهر
   final double sessionRate; // سعر الحصة (يدخله المالك فقط)
   final double advancePayments; // إجمالي السلف والخصومات
-  final String paymentStatus; // "تم القبض" / "معلق"
+  final double bonuses; // المكافآت والحوافز
+  final String paymentStatus; // "تم الصرف" / "تم القبض" / "معلق"
   final String payoutMethod; // كاش / انستاباي / فودافون كاش
   final String payoutNotes;
   final Timestamp payoutDate;
@@ -106,6 +107,7 @@ class PayrollModel {
     int? totalSessions,
     required this.sessionRate,
     this.advancePayments = 0.0,
+    this.bonuses = 0.0,
     this.paymentStatus = 'معلق',
     this.payoutMethod = AppConstants.paymentCash,
     this.payoutNotes = '',
@@ -113,10 +115,13 @@ class PayrollModel {
     required this.monthYear,
   }) : totalSessions = totalSessions ?? (sessions1To10 + sessions11To20 + sessions21To31);
 
-  // Calculated fields
+  // Calculated fields: (الحصص × سعر الحصة) - السلف + المكافآت
   double get totalEarnings => totalSessions * sessionRate;
-  double get netPayable => (totalEarnings - advancePayments) > 0 ? (totalEarnings - advancePayments) : 0.0;
-  bool get isPaid => paymentStatus == 'تم القبض' || paymentStatus == 'تم الصرف';
+  double get netPayable {
+    final net = totalEarnings - advancePayments + bonuses;
+    return net > 0 ? net : 0.0;
+  }
+  bool get isPaid => paymentStatus == 'تم الصرف' || paymentStatus == 'تم القبض';
 
   factory PayrollModel.fromMap(Map<String, dynamic> map) {
     return PayrollModel(
@@ -128,6 +133,7 @@ class PayrollModel {
       totalSessions: (map['total_sessions'] as num?)?.toInt(),
       sessionRate: (map['session_rate'] as num?)?.toDouble() ?? 0.0,
       advancePayments: (map['advance_payments'] as num?)?.toDouble() ?? 0.0,
+      bonuses: (map['bonuses'] as num?)?.toDouble() ?? 0.0,
       paymentStatus: map['payment_status'] as String? ?? 'معلق',
       payoutMethod: map['payout_method'] as String? ?? AppConstants.paymentCash,
       payoutNotes: map['payout_notes'] as String? ?? '',
@@ -148,6 +154,7 @@ class PayrollModel {
       'total_sessions': totalSessions,
       'session_rate': sessionRate,
       'advance_payments': advancePayments,
+      'bonuses': bonuses,
       'payment_status': paymentStatus,
       'payout_method': payoutMethod,
       'payout_notes': payoutNotes,
@@ -161,9 +168,13 @@ class PayrollModel {
     return PayrollModel(
       coachId: data['coach_id'] as String? ?? doc.id,
       coachName: data['coach_name'] as String? ?? '',
+      sessions1To10: (data['sessions_1_to_10'] as num?)?.toInt() ?? 0,
+      sessions11To20: (data['sessions_11_to_20'] as num?)?.toInt() ?? 0,
+      sessions21To31: (data['sessions_21_to_31'] as num?)?.toInt() ?? 0,
       totalSessions: (data['total_sessions'] as num?)?.toInt() ?? 0,
       sessionRate: (data['session_rate'] as num?)?.toDouble() ?? 0.0,
       advancePayments: (data['advance_payments'] as num?)?.toDouble() ?? 0.0,
+      bonuses: (data['bonuses'] as num?)?.toDouble() ?? 0.0,
       paymentStatus: data['payment_status'] as String? ?? 'معلق',
       payoutMethod: data['payout_method'] as String? ?? AppConstants.paymentCash,
       payoutNotes: data['payout_notes'] as String? ?? '',
@@ -176,10 +187,14 @@ class PayrollModel {
     return {
       'coach_id': coachId,
       'coach_name': coachName,
+      'sessions_1_to_10': sessions1To10,
+      'sessions_11_to_20': sessions11To20,
+      'sessions_21_to_31': sessions21To31,
       'total_sessions': totalSessions,
       'session_rate': sessionRate,
       'total_earnings': totalEarnings,
       'advance_payments': advancePayments,
+      'bonuses': bonuses,
       'net_payable': netPayable,
       'payment_status': paymentStatus,
       'payout_method': payoutMethod,
@@ -192,9 +207,13 @@ class PayrollModel {
   PayrollModel copyWith({
     String? coachId,
     String? coachName,
+    int? sessions1To10,
+    int? sessions11To20,
+    int? sessions21To31,
     int? totalSessions,
     double? sessionRate,
     double? advancePayments,
+    double? bonuses,
     String? paymentStatus,
     String? payoutMethod,
     String? payoutNotes,
@@ -204,9 +223,13 @@ class PayrollModel {
     return PayrollModel(
       coachId: coachId ?? this.coachId,
       coachName: coachName ?? this.coachName,
+      sessions1To10: sessions1To10 ?? this.sessions1To10,
+      sessions11To20: sessions11To20 ?? this.sessions11To20,
+      sessions21To31: sessions21To31 ?? this.sessions21To31,
       totalSessions: totalSessions ?? this.totalSessions,
       sessionRate: sessionRate ?? this.sessionRate,
       advancePayments: advancePayments ?? this.advancePayments,
+      bonuses: bonuses ?? this.bonuses,
       paymentStatus: paymentStatus ?? this.paymentStatus,
       payoutMethod: payoutMethod ?? this.payoutMethod,
       payoutNotes: payoutNotes ?? this.payoutNotes,
