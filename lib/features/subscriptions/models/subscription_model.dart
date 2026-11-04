@@ -57,6 +57,8 @@ class SubscriptionModel {
   double get amountRemaining => (totalDue - amountPaid) > 0 ? (totalDue - amountPaid) : 0.0;
   String get paymentStatus => amountRemaining <= 0 ? 'خالص (مدفوع بالكامل)' : 'متبقي عليه: $amountRemaining ج.م';
   bool get isFullyPaid => amountRemaining <= 0;
+  int get medicalSessionsCompensated => excusedSessions;
+  Timestamp get createdAt => paymentDate;
 
   // Remaining sessions quota (considering excused sessions)
   int get remainingSessions {
