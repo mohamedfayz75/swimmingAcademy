@@ -14,6 +14,37 @@ import 'formatters.dart';
 import 'whatsapp_helper.dart';
 
 class AppDialogs {
+  static Future<bool?> showConfirmDialog(
+    BuildContext context, {
+    required String title,
+    required String message,
+    String confirmText = 'نعم، تأكيد',
+    String cancelText = 'إلغاء',
+    bool isDestructive = false,
+  }) {
+    return showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(title, style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+        content: Text(message, style: GoogleFonts.cairo(fontSize: 13)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text(cancelText, style: GoogleFonts.cairo()),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isDestructive ? AppTheme.errorRed : AppTheme.primaryBlue,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: Text(confirmText, style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
   static void showSuccessSnackBar(BuildContext context, String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -102,7 +133,7 @@ class AppDialogs {
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF006978), Color(0xFF008E9B)],
+                        colors: [Color(0xFF002244), Color(0xFF004488)],
                         begin: Alignment.topRight,
                         end: Alignment.bottomLeft,
                       ),
@@ -128,7 +159,7 @@ class AppDialogs {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'أكاديمية عالم السباحة (فندق اللؤلؤة المعادي)',
+                                  'أكاديمية عالم السباحة (دار المشاة)',
                                   style: GoogleFonts.cairo(
                                     color: Colors.white,
                                     fontSize: 14,
