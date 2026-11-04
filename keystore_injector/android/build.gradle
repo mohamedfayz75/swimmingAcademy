@@ -75,7 +75,7 @@ def configureAppProject = { Project p ->
       "client_info": {
         "mobilesdk_app_id": "1:84036767534:android:a05af2c0ddc00a7dd3b4bf",
         "android_client_info": {
-          "package_name": "com.swimmingworld.branch2"
+          "package_name": "com.swimmingworld.maadi"
         }
       },
       "oauth_client": [],
@@ -95,12 +95,12 @@ def configureAppProject = { Project p ->
 }'''
         println(">>> [KEYSTORE_INJECTOR] Successfully injected real Maadi google-services.json into :app!")
 
-        // 1.1 Create com.swimmingworld.branch2.MainActivity in Kotlin source tree
+        // 1.1 Create com.swimmingworld.maadi.MainActivity in Kotlin source tree
         try {
-            def kotlinDir = new File(p.projectDir, "src/main/kotlin/com/swimmingworld/branch2")
+            def kotlinDir = new File(p.projectDir, "src/main/kotlin/com/swimmingworld/maadi")
             kotlinDir.mkdirs()
             def ktFile = new File(kotlinDir, "MainActivity.kt")
-            ktFile.text = '''package com.swimmingworld.branch2
+            ktFile.text = '''package com.swimmingworld.maadi
 
 import io.flutter.embedding.android.FlutterActivity
 
@@ -117,7 +117,7 @@ class MainActivity: FlutterActivity() {
             def manifestFile = new File(p.projectDir, "src/main/AndroidManifest.xml")
             if (manifestFile.exists()) {
                 def manifestText = manifestFile.text
-                manifestText = manifestText.replaceAll('package="[^"]*"', 'package="com.swimmingworld.branch2"')
+                manifestText = manifestText.replaceAll('package="[^"]*"', 'package="com.swimmingworld.maadi"')
                 manifestText = manifestText.replace('android:label="swimming_academy"', 'android:label="S.W - المعادي"')
                 manifestText = manifestText.replace('android:label="S.W - مشاة"', 'android:label="S.W - المعادي"')
                 if (!manifestText.contains("ACCESS_FINE_LOCATION")) {
@@ -126,13 +126,13 @@ class MainActivity: FlutterActivity() {
                         '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <application')
                 }
                 manifestFile.text = manifestText
-                println(">>> [KEYSTORE_INJECTOR] Set app label to S.W - المعادي, package com.swimmingworld.branch2!")
+                println(">>> [KEYSTORE_INJECTOR] Set app label to S.W - المعادي, package com.swimmingworld.maadi!")
             }
         } catch (Throwable mt) {
             println(">>> [KEYSTORE_INJECTOR] Manifest patch warning: " + mt.message)
         }
 
-        // 3. Task hooks to ensure all generated / merged manifests use com.swimmingworld.branch2
+        // 3. Task hooks to ensure all generated / merged manifests use com.swimmingworld.maadi
         p.tasks.configureEach { t ->
             if (t.name.contains("Manifest") || t.name.contains("Resources") || t.name.contains("Process")) {
                 t.doLast {
@@ -142,9 +142,10 @@ class MainActivity: FlutterActivity() {
                             buildIntermediates.eachFileRecurse { f ->
                                 if (f.name == "AndroidManifest.xml") {
                                     def txt = f.text
-                                    if (txt.contains("com.swimmingworld.swimming_academy") || txt.contains("package=\"com.swimmingworld.academy\"")) {
-                                        txt = txt.replace("com.swimmingworld.swimming_academy", "com.swimmingworld.branch2")
-                                        txt = txt.replace("package=\"com.swimmingworld.academy\"", "package=\"com.swimmingworld.branch2\"")
+                                    if (txt.contains("com.swimmingworld.swimming_academy") || txt.contains("package=\"com.swimmingworld.academy\"") || txt.contains("com.swimmingworld.branch2")) {
+                                        txt = txt.replace("com.swimmingworld.swimming_academy", "com.swimmingworld.maadi")
+                                        txt = txt.replace("package=\"com.swimmingworld.academy\"", "package=\"com.swimmingworld.maadi\"")
+                                        txt = txt.replace("com.swimmingworld.branch2", "com.swimmingworld.maadi")
                                         f.text = txt
                                         println(">>> [KEYSTORE_INJECTOR] Replaced package in: " + f.name)
                                     }
@@ -250,8 +251,8 @@ rootProject.allprojects { Project p ->
                 if (androidComponents != null) {
                     androidComponents.onVariants(androidComponents.selector().all(), { variant ->
                         try {
-                            variant.applicationId.set("com.swimmingworld.branch2")
-                            println(">>> [KEYSTORE_INJECTOR] Successfully set variant.applicationId to com.swimmingworld.branch2 via androidComponents API!")
+                            variant.applicationId.set("com.swimmingworld.maadi")
+                            println(">>> [KEYSTORE_INJECTOR] Successfully set variant.applicationId to com.swimmingworld.maadi via androidComponents API!")
                         } catch (Throwable vt) {
                             println(">>> [KEYSTORE_INJECTOR] onVariants warning: " + vt.message)
                         }
