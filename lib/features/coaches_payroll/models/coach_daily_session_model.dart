@@ -21,6 +21,11 @@ class CoachDailySessionModel {
     required this.loggedAt,
   });
 
+  DateTime get createdAt => loggedAt;
+  int get dayOfMonth => date.day;
+  String get dateFormatted => '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+  String get monthYear => '${date.month.toString().padLeft(2, '0')}-${date.year}';
+
   factory CoachDailySessionModel.fromMap(Map<String, dynamic> map) {
     return CoachDailySessionModel(
       id: map['id'] as String? ?? '',
