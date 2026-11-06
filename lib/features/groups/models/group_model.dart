@@ -12,6 +12,7 @@ class GroupModel {
   final String level;
   final int maxCapacity;
   final int currentRegistered;
+  final String poolType; // AppConstants.poolSemiOlympic ('نصف أولمبي') / AppConstants.poolRecreational ('ترفيهي')
 
   const GroupModel({
     required this.groupCode,
@@ -24,6 +25,7 @@ class GroupModel {
     required this.level,
     required this.maxCapacity,
     this.currentRegistered = 0,
+    this.poolType = AppConstants.poolSemiOlympic,
   });
 
   // Calculated fields
@@ -33,6 +35,8 @@ class GroupModel {
   bool get isBabyPrivate => groupType.contains('رضع');
   bool get isAdultPrivate => groupType.contains('كبار');
   bool get isSemiPrivate => groupType.contains('سيمي-برايفت');
+  bool get isSemiOlympic => poolType.contains('نصف') || poolType.contains('أولمبي');
+  String get poolIcon => isSemiOlympic ? '🏊‍♂️' : '🏖️';
 
   factory GroupModel.fromMap(Map<String, dynamic> map) {
     final daysRaw = map['training_days'];
@@ -51,6 +55,7 @@ class GroupModel {
       level: map['level'] as String? ?? 'مبتدئ',
       maxCapacity: (map['max_capacity'] as num?)?.toInt() ?? 6,
       currentRegistered: (map['current_registered'] as num?)?.toInt() ?? 0,
+      poolType: map['pool_type'] as String? ?? AppConstants.poolSemiOlympic,
     );
   }
 
@@ -66,6 +71,7 @@ class GroupModel {
       'level': level,
       'max_capacity': maxCapacity,
       'current_registered': currentRegistered,
+      'pool_type': poolType,
     };
   }
 
@@ -88,6 +94,7 @@ class GroupModel {
       level: data['level'] as String? ?? 'مبتدئ',
       maxCapacity: (data['max_capacity'] as num?)?.toInt() ?? 6,
       currentRegistered: (data['current_registered'] as num?)?.toInt() ?? 0,
+      poolType: data['pool_type'] as String? ?? AppConstants.poolSemiOlympic,
     );
   }
 
@@ -105,6 +112,7 @@ class GroupModel {
       'current_registered': currentRegistered,
       'available_seats': availableSeats,
       'status': status,
+      'pool_type': poolType,
     };
   }
 
@@ -119,6 +127,7 @@ class GroupModel {
     String? level,
     int? maxCapacity,
     int? currentRegistered,
+    String? poolType,
   }) {
     return GroupModel(
       groupCode: groupCode ?? this.groupCode,
@@ -131,6 +140,7 @@ class GroupModel {
       level: level ?? this.level,
       maxCapacity: maxCapacity ?? this.maxCapacity,
       currentRegistered: currentRegistered ?? this.currentRegistered,
+      poolType: poolType ?? this.poolType,
     );
   }
 }
