@@ -89,7 +89,7 @@ class _AppShellState extends ConsumerState<AppShell> {
     // Titles corresponding to screens
     final List<String> screenTitles = [
       'ماسح باركود الحضور (QR)',
-      'المجموعات',
+      'كشف نزول وحضور المجموعات',
       'تسجيل لاعب جديد',
       'تسجيل وحجز اشتراك جديد',
       'كروت المياة والاستهلاك',
@@ -210,7 +210,7 @@ class _AppShellState extends ConsumerState<AppShell> {
             ),
             ListTile(
               leading: const Icon(Icons.pool, color: AppTheme.primaryBlue),
-              title: Text('المجموعات (كشف نزول المسبح والتمام)', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
+              title: Text('كشف نزول وحضور المجموعات', style: GoogleFonts.cairo(fontWeight: FontWeight.w600)),
               selected: _currentIndex == 1,
               onTap: () {
                 setState(() => _currentIndex = 1);
