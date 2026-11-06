@@ -768,11 +768,13 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
                       prefixIcon: const Icon(Icons.pool, color: AppTheme.primaryBlue),
                     ),
                     items: groups.map((g) {
-                      final isFull = !g.isAvailable;
+                      final activeReg = LocalStore.instance.getActiveRegisteredCount(g.groupCode);
+                      final avail = (g.maxCapacity - activeReg) > 0 ? (g.maxCapacity - activeReg) : 0;
+                      final isFull = avail == 0;
                       final daysStr = g.trainingDays.isNotEmpty ? g.trainingDays.join('، ') : 'حسب الجدول';
                       final timeStr = g.sessionTime.isNotEmpty ? g.sessionTime : '';
-                      final seatsText = g.availableSeats > 0 ? 'متاح ${g.availableSeats}' : 'مكتملة';
-                      final labelText = '${g.groupCode} - ك/ ${g.coachName} ($daysStr${timeStr.isNotEmpty ? " - $timeStr" : ""}) [$seatsText]';
+                      final seatsText = avail > 0 ? 'متاح $avail' : 'مكتملة';
+                      final labelText = '${g.groupCode} - ك/ ${g.coachName} ($daysStr${timeStr.isNotEmpty ? " - $timeStr" : ""}) [${g.poolIcon} ${g.poolType}] [$seatsText]';
 
                       return DropdownMenuItem<GroupModel>(
                         value: isFull ? null : g,
@@ -806,10 +808,12 @@ class _SubscriptionEntryScreenState extends ConsumerState<SubscriptionEntryScree
                         prefixIcon: Icon(Icons.add_circle_outline, color: AppTheme.accentTeal),
                       ),
                       items: groups.map((g) {
+                        final activeReg = LocalStore.instance.getActiveRegisteredCount(g.groupCode);
+                        final avail = (g.maxCapacity - activeReg) > 0 ? (g.maxCapacity - activeReg) : 0;
                         final daysStr = g.trainingDays.isNotEmpty ? g.trainingDays.join('، ') : 'حسب الجدول';
                         final timeStr = g.sessionTime.isNotEmpty ? g.sessionTime : '';
-                        final seatsText = g.availableSeats > 0 ? 'متاح ${g.availableSeats}' : 'مكتملة';
-                        final labelText = '${g.groupCode} - ك/ ${g.coachName} ($daysStr${timeStr.isNotEmpty ? " - $timeStr" : ""}) [$seatsText]';
+                        final seatsText = avail > 0 ? 'متاح $avail' : 'مكتملة';
+                        final labelText = '${g.groupCode} - ك/ ${g.coachName} ($daysStr${timeStr.isNotEmpty ? " - $timeStr" : ""}) [${g.poolIcon} ${g.poolType}] [$seatsText]';
 
                         return DropdownMenuItem<GroupModel>(
                           value: g,
