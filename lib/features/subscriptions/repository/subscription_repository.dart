@@ -25,4 +25,14 @@ class SubscriptionRepository {
       (list) => _store.getActiveSubscriptionsForGroup(groupCode),
     );
   }
+
+  // Update existing subscription
+  Future<void> updateSubscription(SubscriptionModel subscription) async {
+    _store.updateSubscription(subscription);
+  }
+
+  // Delete subscription
+  Future<void> deleteSubscription(String id) async {
+    _store.deleteSubscription(id);
+  }
 }
