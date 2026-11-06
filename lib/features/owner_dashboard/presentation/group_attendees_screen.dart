@@ -149,16 +149,31 @@ class _GroupAttendeesScreenState extends ConsumerState<GroupAttendeesScreen> {
 
                 return DropdownButtonFormField<String>(
                   value: currentCode,
+                  isExpanded: true,
                   decoration: const InputDecoration(
-                    labelText: 'اختر كود المجموعة للتمام ونزول المسبح',
-                    prefixIcon: Icon(Icons.group, color: AppTheme.primaryBlue),
+                    labelText: 'اختر المجموعة للتمام',
+                    prefixIcon: Icon(Icons.pool_rounded, color: AppTheme.primaryBlue),
                   ),
+                  selectedItemBuilder: (context) {
+                    return groups.map((g) {
+                      final days = g.trainingDays.isNotEmpty ? g.trainingDays.join('، ') : '';
+                      final time = g.sessionTime.isNotEmpty ? g.sessionTime : '';
+                      return Text(
+                        '${g.groupCode} | ك/ ${g.coachName} | ${g.trainingType} | $days ($time)',
+                        style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+                        overflow: TextOverflow.ellipsis,
+                      );
+                    }).toList();
+                  },
                   items: groups.map((g) {
+                    final days = g.trainingDays.isNotEmpty ? g.trainingDays.join('، ') : '';
+                    final time = g.sessionTime.isNotEmpty ? g.sessionTime : '';
                     return DropdownMenuItem(
                       value: g.groupCode,
                       child: Text(
-                        '${g.groupCode} - ${g.coachName} (${g.trainingType})',
-                        style: GoogleFonts.cairo(fontSize: 14),
+                        '${g.groupCode} | ك/ ${g.coachName} | ${g.trainingType} | $days ($time)',
+                        style: GoogleFonts.cairo(fontSize: 13),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     );
                   }).toList(),

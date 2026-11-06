@@ -161,6 +161,281 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
     );
   }
 
+  void _showEditSubscriptionDialog(SubscriptionModel sub) {
+    final allGroups = LocalStore.instance.getGroups();
+    GroupModel? selectedGroup;
+    try {
+      selectedGroup = allGroups.firstWhere((g) => g.groupCode == sub.groupCode);
+    } catch (_) {
+      selectedGroup = allGroups.isNotEmpty ? allGroups.first : null;
+    }
+
+    final reqController = TextEditingController(text: '${sub.amountRequired.toStringAsFixed(0)}');
+    final paidController = TextEditingController(text: '${sub.amountPaid.toStringAsFixed(0)}');
+    final stampController = TextEditingController(text: '${sub.stampCardFee.toStringAsFixed(0)}');
+    final sessionsController = TextEditingController(text: '${sub.sessionsCount}');
+
+    DateTime startDate = sub.startDate.toDate();
+    DateTime endDate = sub.endDate.toDate();
+    String bookingStatus = sub.bookingStatus;
+    String paymentMethod = sub.paymentMethod;
+
+    showDialog(
+      context: context,
+      builder: (dialogCtx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final req = double.tryParse(reqController.text) ?? 0.0;
+          final paid = double.tryParse(paidController.text) ?? 0.0;
+          final stamp = double.tryParse(stampController.text) ?? 0.0;
+          final due = req + stamp;
+          final rem = (due - paid) > 0 ? (due - paid) : 0.0;
+
+          return AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.edit_note_rounded, color: AppTheme.primaryBlue, size: 26),
+                const SizedBox(width: 8),
+                Text('تعديل بيانات الاشتراك', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 16)),
+              ],
+            ),
+            content: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.9,
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Swimmer summary header
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryBlue.withOpacity(0.06),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.person, color: AppTheme.primaryBlue, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              '${sub.playerName} (كود: ${sub.playerCode})',
+                              style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 1. Pool Start Date (ميعاد وتاريخ نزول المياه)
+                    Text('1. ميعاد وتاريخ نزول المياه (بدء التدريب):', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryBlue)),
+                    const SizedBox(height: 6),
+                    InkWell(
+                      onTap: () async {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: startDate,
+                          firstDate: DateTime(2024),
+                          lastDate: DateTime(2030),
+                        );
+                        if (picked != null) {
+                          setDialogState(() {
+                            startDate = picked;
+                            endDate = picked.add(const Duration(days: 30));
+                          });
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.blueGrey.shade300),
+                          borderRadius: BorderRadius.circular(10),
+                          color: AppTheme.backgroundLight,
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.calendar_month, color: AppTheme.primaryBlue, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              '${startDate.year}-${startDate.month.toString().padLeft(2, '0')}-${startDate.day.toString().padLeft(2, '0')}',
+                              style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold),
+                            ),
+                            const Spacer(),
+                            Text('اضغط لتغيير التاريخ', style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.primaryBlue)),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 2. Group & Schedule Selection (المجموعة والمواعيد)
+                    Text('2. المجموعة والمواعيد:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryBlue)),
+                    const SizedBox(height: 6),
+                    DropdownButtonFormField<GroupModel>(
+                      value: selectedGroup,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      ),
+                      items: allGroups.map((g) {
+                        return DropdownMenuItem<GroupModel>(
+                          value: g,
+                          child: Text(
+                            '${g.groupCode} | ${g.coachName} (${g.trainingDays.join("، ")} ${g.sessionTime})',
+                            style: GoogleFonts.cairo(fontSize: 12),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => selectedGroup = val);
+                      },
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 3. Booking Status (حالة الحجز - عربون صيف vs مؤكد)
+                    Text('3. حالة الحجز:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryBlue)),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        ChoiceChip(
+                          label: Text('حجز بعربون (صيف)', style: GoogleFonts.cairo(fontSize: 11)),
+                          selected: bookingStatus == AppConstants.statusDeposit,
+                          selectedColor: AppTheme.warningOrange.withOpacity(0.2),
+                          onSelected: (_) => setDialogState(() => bookingStatus = AppConstants.statusDeposit),
+                        ),
+                        const SizedBox(width: 8),
+                        ChoiceChip(
+                          label: Text('اشتراك مؤكد ونزل المياه', style: GoogleFonts.cairo(fontSize: 11)),
+                          selected: bookingStatus == AppConstants.statusActive,
+                          selectedColor: AppTheme.successGreen.withOpacity(0.2),
+                          onSelected: (_) => setDialogState(() => bookingStatus = AppConstants.statusActive),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 4. Financials & Sessions
+                    Text('4. المبالغ وعدد الحصص:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13, color: AppTheme.primaryBlue)),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: sessionsController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'عدد الحصص'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: reqController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'المقرر (ج.م)'),
+                            onChanged: (_) => setDialogState(() {}),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: paidController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'المدفوع (ج.م)'),
+                            onChanged: (_) => setDialogState(() {}),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: stampController,
+                            keyboardType: TextInputType.number,
+                            decoration: const InputDecoration(labelText: 'ختم الكارت (ج.م)'),
+                            onChanged: (_) => setDialogState(() {}),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Balance Display Box
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: rem > 0 ? AppTheme.warningOrange.withOpacity(0.1) : AppTheme.successGreen.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text('المبلغ المتبقي بعد التعديل:', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w600)),
+                          Text('${rem.toStringAsFixed(0)} ج.م', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.bold, color: rem > 0 ? AppTheme.warningOrange : AppTheme.successGreen)),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // 5. Payment Method
+                    DropdownButtonFormField<String>(
+                      value: paymentMethod,
+                      decoration: const InputDecoration(labelText: 'طريقة الدفع'),
+                      items: AppConstants.paymentMethods.map((m) {
+                        return DropdownMenuItem(value: m, child: Text(m, style: GoogleFonts.cairo(fontSize: 13)));
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) setDialogState(() => paymentMethod = val);
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(dialogCtx), child: const Text('إلغاء')),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primaryBlue, foregroundColor: Colors.white),
+                onPressed: () {
+                  final newReq = double.tryParse(reqController.text) ?? sub.amountRequired;
+                  final newPaid = double.tryParse(paidController.text) ?? sub.amountPaid;
+                  final newStamp = double.tryParse(stampController.text) ?? sub.stampCardFee;
+                  final newSessions = int.tryParse(sessionsController.text) ?? sub.sessionsCount;
+
+                  final updated = sub.copyWith(
+                    startDate: Timestamp.fromDate(startDate),
+                    endDate: Timestamp.fromDate(endDate),
+                    groupCode: selectedGroup?.groupCode ?? sub.groupCode,
+                    coachName: selectedGroup?.coachName ?? sub.coachName,
+                    trainingDays: selectedGroup?.trainingDays ?? sub.trainingDays,
+                    sessionTime: selectedGroup?.sessionTime ?? sub.sessionTime,
+                    trainingType: selectedGroup?.trainingType ?? sub.trainingType,
+                    amountRequired: newReq,
+                    amountPaid: newPaid,
+                    stampCardFee: newStamp,
+                    sessionsCount: newSessions,
+                    bookingStatus: bookingStatus,
+                    paymentMethod: paymentMethod,
+                  );
+
+                  LocalStore.instance.updateSubscription(updated);
+                  Navigator.pop(dialogCtx);
+                  AppDialogs.showSuccessSnackBar(context, 'تم تعديل بيانات اشتراك (${sub.playerName}) بنجاح!');
+                  ref.invalidate(subscriptionsStreamProvider);
+                  ref.invalidate(groupsStreamProvider);
+                },
+                child: const Text('حفظ التعديلات'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
   void _showSettleBalanceDialog(SubscriptionModel sub) {
     final amountController = TextEditingController(text: '${sub.amountRemaining}');
     String method = AppConstants.paymentCash;
@@ -509,6 +784,22 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                             ),
                             const SizedBox(width: 8),
                           ],
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: AppTheme.warningOrange,
+                                side: const BorderSide(color: AppTheme.warningOrange),
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                              ),
+                              onPressed: () {
+                                Navigator.pop(ctx);
+                                _showEditSubscriptionDialog(sub);
+                              },
+                              icon: const Icon(Icons.edit_note, size: 18),
+                              label: Text('تعديل الاشتراك', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
                           Expanded(
                             child: ElevatedButton.icon(
                               style: ElevatedButton.styleFrom(
@@ -936,7 +1227,22 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                                       label: Text('التفاصيل', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 4),
+
+                                  // Edit Button
+                                  Expanded(
+                                    child: OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: AppTheme.warningOrange,
+                                        side: const BorderSide(color: AppTheme.warningOrange),
+                                        padding: const EdgeInsets.symmetric(vertical: 6),
+                                      ),
+                                      onPressed: () => _showEditSubscriptionDialog(sub),
+                                      icon: const Icon(Icons.edit_note, size: 15),
+                                      label: Text('تعديل', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
                                   if (!sub.isFullyPaid) ...[
                                     Expanded(
                                       child: OutlinedButton.icon(
@@ -950,7 +1256,7 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                                         label: Text('سداد', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
                                       ),
                                     ),
-                                    const SizedBox(width: 6),
+                                    const SizedBox(width: 4),
                                   ],
 
                                   // Transfer Group Button
@@ -966,7 +1272,7 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                                       label: Text('نقل', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
                                     ),
                                   ),
-                                  const SizedBox(width: 6),
+                                  const SizedBox(width: 4),
 
                                   // Quick Renewal Button
                                   Expanded(

@@ -1078,6 +1078,24 @@ class LocalStore {
     }
   }
 
+  // Update an existing subscription (dates, pool start time, group, amounts, status)
+  void updateSubscription(SubscriptionModel updatedSub) {
+    final index = _subscriptions.indexWhere((s) => s.id == updatedSub.id);
+    if (index != -1) {
+      final oldSub = _subscriptions[index];
+      _subscriptions[index] = updatedSub;
+      _subscriptionsController.add(List.unmodifiable(_subscriptions));
+      _saveAll();
+
+      if (oldSub.groupCode != updatedSub.groupCode) {
+        decrementGroupRegistered(oldSub.groupCode);
+        incrementGroupRegistered(updatedSub.groupCode);
+      }
+      recalculateAllGroupsCapacity();
+      CloudSyncService.instance.pushSubscription(updatedSub);
+    }
+  }
+
   // Confirm a deposit subscription upon full payment on day 1
   void confirmDepositSubscription({
     required String subscriptionId,
