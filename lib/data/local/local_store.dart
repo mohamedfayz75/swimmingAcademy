@@ -961,7 +961,11 @@ class LocalStore {
   List<SubscriptionModel> getActiveSubscriptionsForGroup(String groupCode) {
     final clean = groupCode.trim().toUpperCase();
     final matching = _subscriptions
-        .where((s) => s.groupCode.trim().toUpperCase() == clean && !s.isExpired)
+        .where((s) =>
+            s.groupCode.trim().toUpperCase() == clean &&
+            !s.isExpired &&
+            s.attendedSessions < s.sessionsCount &&
+            !s.bookingStatus.contains('ملغي'))
         .toList();
 
     // Deduplicate by playerCode - each swimmer appears once with their latest active subscription
@@ -1070,6 +1074,21 @@ class LocalStore {
       _subscriptionsController.add(List.unmodifiable(_subscriptions));
       _saveAll();
       CloudSyncService.instance.deleteSubscription(id);
+    }
+  }
+
+  void updateSubscription(SubscriptionModel updatedSub) {
+    final index = _subscriptions.indexWhere((s) => s.id == updatedSub.id);
+    if (index != -1) {
+      final oldSub = _subscriptions[index];
+      if (oldSub.groupCode != updatedSub.groupCode) {
+        decrementGroupRegistered(oldSub.groupCode);
+        incrementGroupRegistered(updatedSub.groupCode);
+      }
+      _subscriptions[index] = updatedSub;
+      _subscriptionsController.add(List.unmodifiable(_subscriptions));
+      _saveAll();
+      CloudSyncService.instance.pushSubscription(updatedSub);
     }
   }
 
@@ -1368,9 +1387,7 @@ class LocalStore {
   }
 
   int getActiveRegisteredCount(String groupCode) {
-    return _subscriptions
-        .where((s) => s.groupCode == groupCode && !s.isExpired)
-        .length;
+    return getActiveSubscriptionsForGroup(groupCode).length;
   }
 
   // فرز وتجميع الحصص حسب فترات الشهر الثلاث تلقائياً
