@@ -25,6 +25,300 @@ class SubscriptionsListScreen extends ConsumerStatefulWidget {
 
 class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScreen> {
   String _filter = 'active'; // 'active', 'all', 'paid', 'remaining', 'expired', 'deposit'
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _showEditSubscriptionDialog(SubscriptionModel sub) {
+    final allGroups = LocalStore.instance.getGroups();
+    GroupModel? selectedGroup = allGroups.firstWhere(
+      (g) => g.groupCode == sub.groupCode,
+      orElse: () => allGroups.isNotEmpty
+          ? allGroups.first
+          : GroupModel(
+              groupCode: sub.groupCode,
+              coachId: '',
+              coachName: sub.coachName,
+              trainingDays: sub.trainingDays,
+              sessionTime: sub.sessionTime,
+              trainingType: sub.trainingType,
+              level: '',
+              maxCapacity: 6,
+            ),
+    );
+
+    final sessionsController = TextEditingController(text: '${sub.sessionsCount}');
+    final attendedController = TextEditingController(text: '${sub.attendedSessions}');
+    final excusedController = TextEditingController(text: '${sub.excusedSessions}');
+    final reqAmountController = TextEditingController(text: '${sub.amountRequired}');
+    final stampFeeController = TextEditingController(text: '${sub.stampCardFee}');
+    final paidAmountController = TextEditingController(text: '${sub.amountPaid}');
+    String selectedPaymentMethod = sub.paymentMethod;
+    DateTime startDate = sub.startDate.toDate();
+    DateTime endDate = sub.endDate.toDate();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final totalDue = (double.tryParse(reqAmountController.text) ?? 0) + (double.tryParse(stampFeeController.text) ?? 0);
+          final paid = double.tryParse(paidAmountController.text) ?? 0;
+          final remaining = (totalDue - paid) > 0 ? (totalDue - paid) : 0.0;
+
+          return AlertDialog(
+            title: Row(
+              children: [
+                const Icon(Icons.edit_note, color: AppTheme.primaryBlue, size: 26),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'تعديل بيانات اشتراك: ${sub.playerName}',
+                    style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 15),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primaryBlue.withOpacity(0.06),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('كود: ${sub.playerCode}', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 13)),
+                        Text('الفرع: ${sub.branch}', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Group Selection
+                  Text('المجموعة التدريبية:', style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  DropdownButtonFormField<GroupModel>(
+                    value: selectedGroup,
+                    isExpanded: true,
+                    decoration: const InputDecoration(
+                      contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    ),
+                    items: allGroups.map((g) {
+                      return DropdownMenuItem(
+                        value: g,
+                        child: Text(
+                          '${g.groupCode} - ${g.coachName} (${g.trainingDays.join("، ")} ${g.sessionTime}) [${g.poolIcon} ${g.poolType}]',
+                          style: GoogleFonts.cairo(fontSize: 12),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => selectedGroup = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Sessions Quota Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: sessionsController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'إجمالي الحصص'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: attendedController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'المحضورة'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: excusedController,
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'معوض طبي'),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Financials Row
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: reqAmountController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(labelText: 'المقرر (ج.م)'),
+                          onChanged: (_) => setDialogState(() {}),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: stampFeeController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(labelText: 'رسم الكارت'),
+                          onChanged: (_) => setDialogState(() {}),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: paidAmountController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          decoration: const InputDecoration(labelText: 'المدفوع'),
+                          onChanged: (_) => setDialogState(() {}),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: remaining > 0 ? AppTheme.warningOrange.withOpacity(0.12) : AppTheme.successGreen.withOpacity(0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('المستحق: $totalDue ج.م', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold)),
+                        Text('المتبقي: $remaining ج.م', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: remaining > 0 ? AppTheme.warningOrange : AppTheme.successGreen)),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Payment method
+                  DropdownButtonFormField<String>(
+                    value: selectedPaymentMethod,
+                    decoration: const InputDecoration(labelText: 'طريقة الدفع'),
+                    items: [
+                      DropdownMenuItem(value: AppConstants.paymentCash, child: Text(AppConstants.paymentCash, style: GoogleFonts.cairo(fontSize: 12))),
+                      DropdownMenuItem(value: AppConstants.paymentVodafoneCash, child: Text(AppConstants.paymentVodafoneCash, style: GoogleFonts.cairo(fontSize: 12))),
+                      DropdownMenuItem(value: AppConstants.paymentInstaPay, child: Text(AppConstants.paymentInstaPay, style: GoogleFonts.cairo(fontSize: 12))),
+                      DropdownMenuItem(value: AppConstants.paymentVisa, child: Text(AppConstants.paymentVisa, style: GoogleFonts.cairo(fontSize: 12))),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) setDialogState(() => selectedPaymentMethod = val);
+                    },
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Dates pickers
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.date_range, size: 16),
+                          label: Text(
+                            'البداية: ${startDate.year}/${startDate.month}/${startDate.day}',
+                            style: GoogleFonts.cairo(fontSize: 11),
+                          ),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: startDate,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2035),
+                            );
+                            if (picked != null) {
+                              setDialogState(() => startDate = picked);
+                            }
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.event_available, size: 16),
+                          label: Text(
+                            'النهاية: ${endDate.year}/${endDate.month}/${endDate.day}',
+                            style: GoogleFonts.cairo(fontSize: 11),
+                          ),
+                          onPressed: () async {
+                            final picked = await showDatePicker(
+                              context: context,
+                              initialDate: endDate,
+                              firstDate: DateTime(2020),
+                              lastDate: DateTime(2035),
+                            );
+                            if (picked != null) {
+                              setDialogState(() => endDate = picked);
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('إلغاء'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppTheme.primaryBlue,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  final newSessions = int.tryParse(sessionsController.text) ?? sub.sessionsCount;
+                  final newAttended = int.tryParse(attendedController.text) ?? sub.attendedSessions;
+                  final newExcused = int.tryParse(excusedController.text) ?? sub.excusedSessions;
+                  final newReq = double.tryParse(reqAmountController.text) ?? sub.amountRequired;
+                  final newStamp = double.tryParse(stampFeeController.text) ?? sub.stampCardFee;
+                  final newPaid = double.tryParse(paidAmountController.text) ?? sub.amountPaid;
+
+                  final updated = sub.copyWith(
+                    groupCode: selectedGroup?.groupCode ?? sub.groupCode,
+                    coachName: selectedGroup?.coachName ?? sub.coachName,
+                    trainingDays: selectedGroup?.trainingDays ?? sub.trainingDays,
+                    sessionTime: selectedGroup?.sessionTime ?? sub.sessionTime,
+                    sessionsCount: newSessions,
+                    attendedSessions: newAttended,
+                    excusedSessions: newExcused,
+                    amountRequired: newReq,
+                    stampCardFee: newStamp,
+                    amountPaid: newPaid,
+                    paymentMethod: selectedPaymentMethod,
+                    startDate: Timestamp.fromDate(startDate),
+                    endDate: Timestamp.fromDate(endDate),
+                  );
+
+                  LocalStore.instance.updateSubscription(updated);
+                  Navigator.pop(ctx);
+                  AppDialogs.showSuccessSnackBar(context, 'تم تحديث بيانات الاشتراك بنجاح');
+                },
+                child: const Text('حفظ التعديلات'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
 
   void _confirmDeleteSubscription(SubscriptionModel sub) {
     showDialog(
@@ -410,6 +704,22 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                       Expanded(
                         child: OutlinedButton.icon(
                           style: OutlinedButton.styleFrom(
+                            foregroundColor: AppTheme.primaryBlue,
+                            side: const BorderSide(color: AppTheme.primaryBlue),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                          ),
+                          onPressed: () {
+                            Navigator.pop(sheetCtx);
+                            _showEditSubscriptionDialog(sub);
+                          },
+                          icon: const Icon(Icons.edit_note, size: 16),
+                          label: Text('تعديل', style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
                             foregroundColor: AppTheme.accentTeal,
                             side: const BorderSide(color: AppTheme.accentTeal),
                             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -530,10 +840,53 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
       ),
       body: Column(
         children: [
+          // Search Bar
+          Container(
+            color: Colors.white,
+            padding: const EdgeInsets.fromLTRB(16, 10, 16, 4),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val.trim().toLowerCase();
+                });
+              },
+              decoration: InputDecoration(
+                hintText: 'بحث بالاسم، كود السباح (SW-...)، أو المجموعة...',
+                hintStyle: GoogleFonts.cairo(fontSize: 13, color: AppTheme.textMuted),
+                prefixIcon: const Icon(Icons.search, color: AppTheme.primaryBlue),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.clear, size: 20),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: const Color(0xFFF4F6F9),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppTheme.borderGray),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: AppTheme.borderGray),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: AppTheme.primaryBlue, width: 1.5),
+                ),
+              ),
+            ),
+          ),
+
           // Filter Chips Bar
           Container(
             color: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
@@ -601,6 +954,18 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                   filtered = filtered.where((s) => s.isDepositOnly).toList();
                 }
 
+                if (_searchQuery.isNotEmpty) {
+                  filtered = filtered.where((s) {
+                    final nameMatch = s.playerName.toLowerCase().contains(_searchQuery);
+                    final codeMatch = s.playerCode.toLowerCase().contains(_searchQuery);
+                    final groupMatch = s.groupCode.toLowerCase().contains(_searchQuery);
+                    final coachMatch = s.coachName.toLowerCase().contains(_searchQuery);
+                    final player = LocalStore.instance.getPlayerByCode(s.playerCode);
+                    final phoneMatch = player != null && player.guardianPhone.contains(_searchQuery);
+                    return nameMatch || codeMatch || groupMatch || coachMatch || phoneMatch;
+                  }).toList();
+                }
+
                 if (filtered.isEmpty) {
                   return Center(
                     child: Column(
@@ -647,56 +1012,66 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Row(
-                                        children: [
-                                          Text(
-                                            sub.playerName,
-                                            style: GoogleFonts.cairo(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                              color: isExpired ? AppTheme.errorRed : AppTheme.primaryBlue,
-                                            ),
-                                          ),
-                                          if (sub.isDepositOnly) ...[
-                                            const SizedBox(width: 8),
-                                            Container(
-                                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                              decoration: BoxDecoration(
-                                                color: AppTheme.warningOrange.withOpacity(0.15),
-                                                borderRadius: BorderRadius.circular(8),
+                                  // Swimmer Name & Info (Expanded to prevent clipping in RTL)
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          children: [
+                                            Flexible(
+                                              child: Text(
+                                                sub.playerName,
+                                                style: GoogleFonts.cairo(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                  color: isExpired ? AppTheme.errorRed : AppTheme.primaryBlue,
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
                                               ),
-                                              child: Text('عربون صيف', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.warningOrange)),
                                             ),
+                                            if (sub.isDepositOnly) ...[
+                                              const SizedBox(width: 6),
+                                              Container(
+                                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                                decoration: BoxDecoration(
+                                                  color: AppTheme.warningOrange.withOpacity(0.15),
+                                                  borderRadius: BorderRadius.circular(6),
+                                                ),
+                                                child: Text('عربون صيف', style: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.warningOrange)),
+                                              ),
+                                            ],
                                           ],
-                                        ],
-                                      ),
-                                      Text(
-                                        'كود: ${sub.playerCode} | الفرع: ${sub.branch}',
-                                        style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
-                                      ),
-                                    ],
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'كود: ${sub.playerCode} | الفرع: ${sub.branch}',
+                                          style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textMuted),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
                                   ),
+                                  const SizedBox(width: 8),
 
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
+                                  // Status Badge & Action Icons Stack
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
                                     children: [
                                       Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                                         decoration: BoxDecoration(
                                           color: isExpired
                                               ? AppTheme.errorRed.withOpacity(0.12)
                                               : (isPaid ? AppTheme.successGreen.withOpacity(0.12) : AppTheme.warningOrange.withOpacity(0.12)),
-                                          borderRadius: BorderRadius.circular(10),
+                                          borderRadius: BorderRadius.circular(8),
                                         ),
                                         child: Text(
                                           isExpired ? 'منتهي (مطلوب تجديد)' : sub.paymentStatus,
                                           style: GoogleFonts.cairo(
-                                            fontSize: 12,
+                                            fontSize: 11,
                                             fontWeight: FontWeight.bold,
                                             color: isExpired
                                                 ? AppTheme.errorRed
@@ -704,65 +1079,79 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                                           ),
                                         ),
                                       ),
-                                      const SizedBox(width: 4),
-                                      IconButton(
-                                        icon: const Icon(Icons.info_outline, color: AppTheme.primaryBlue, size: 20),
-                                        tooltip: 'عرض تفاصيل الاشتراك الكاملة',
-                                        visualDensity: VisualDensity.compact,
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
-                                        onPressed: () => _showSubscriptionDetailsSheet(sub),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      IconButton(
-                                        icon: const Icon(Icons.chat, color: Color(0xFF25D366), size: 20),
-                                        tooltip: 'إرسال الفاتورة عبر واتساب',
-                                      visualDensity: VisualDensity.compact,
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
-                                      onPressed: () async {
-                                        final player = LocalStore.instance.getPlayerByCode(sub.playerCode);
-                                        final phone = player?.guardianPhone ?? '';
-                                        if (phone.isEmpty) {
-                                          AppDialogs.showWarningSnackBar(
-                                            context,
-                                            'رقم ولي الأمر غير مسجل للاعب (${sub.playerName})',
-                                          );
-                                          return;
-                                        }
-                                        final msg = WhatsAppHelper.buildSubscriptionInvoiceMessage(
-                                          sub: sub,
-                                          isRenewal: false,
-                                        );
-                                        final ok = await WhatsAppHelper.openWhatsApp(
-                                          phone: phone,
-                                          message: msg,
-                                        );
-                                        if (!ok && context.mounted) {
-                                          AppDialogs.showWarningSnackBar(
-                                            context,
-                                            'تعذر فتح الواتساب. تأكد من تثبيت التطبيق وصحة الرقم ($phone)',
-                                          );
-                                        }
-                                      },
-                                    ),
-                                    if (isOwner) ...[
-                                      const SizedBox(width: 4),
-                                      IconButton(
-                                        icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed, size: 20),
-                                        tooltip: 'حذف الاشتراك (للمالك فقط)',
-                                        visualDensity: VisualDensity.compact,
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(),
-                                        onPressed: () => _confirmDeleteSubscription(sub),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          IconButton(
+                                            icon: const Icon(Icons.info_outline, color: AppTheme.primaryBlue, size: 20),
+                                            tooltip: 'عرض تفاصيل الاشتراك الكاملة',
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.all(4),
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () => _showSubscriptionDetailsSheet(sub),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          IconButton(
+                                            icon: const Icon(Icons.edit_note, color: AppTheme.accentTeal, size: 22),
+                                            tooltip: 'تعديل بيانات الاشتراك',
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.all(4),
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () => _showEditSubscriptionDialog(sub),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          IconButton(
+                                            icon: const Icon(Icons.chat, color: Color(0xFF25D366), size: 20),
+                                            tooltip: 'إرسال الفاتورة عبر واتساب',
+                                            visualDensity: VisualDensity.compact,
+                                            padding: const EdgeInsets.all(4),
+                                            constraints: const BoxConstraints(),
+                                            onPressed: () async {
+                                              final player = LocalStore.instance.getPlayerByCode(sub.playerCode);
+                                              final phone = player?.guardianPhone ?? '';
+                                              if (phone.isEmpty) {
+                                                AppDialogs.showWarningSnackBar(
+                                                  context,
+                                                  'رقم ولي الأمر غير مسجل للاعب (${sub.playerName})',
+                                                );
+                                                return;
+                                              }
+                                              final msg = WhatsAppHelper.buildSubscriptionInvoiceMessage(
+                                                sub: sub,
+                                                isRenewal: false,
+                                              );
+                                              final ok = await WhatsAppHelper.openWhatsApp(
+                                                phone: phone,
+                                                message: msg,
+                                              );
+                                              if (!ok && context.mounted) {
+                                                AppDialogs.showWarningSnackBar(
+                                                  context,
+                                                  'تعذر فتح الواتساب. تأكد من تثبيت التطبيق وصحة الرقم ($phone)',
+                                                );
+                                              }
+                                            },
+                                          ),
+                                          if (isOwner) ...[
+                                            const SizedBox(width: 6),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete_outline, color: AppTheme.errorRed, size: 20),
+                                              tooltip: 'حذف الاشتراك (للمالك فقط)',
+                                              visualDensity: VisualDensity.compact,
+                                              padding: const EdgeInsets.all(4),
+                                              constraints: const BoxConstraints(),
+                                              onPressed: () => _confirmDeleteSubscription(sub),
+                                            ),
+                                          ],
+                                        ],
                                       ),
                                     ],
-                                  ],
-                                ),
-                              ],
-                            ),
+                                  ),
+                                ],
+                              ),
 
-                            const Divider(height: 18),
+                              const Divider(height: 18),
 
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
