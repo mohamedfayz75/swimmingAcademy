@@ -84,11 +84,26 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
     );
   }
 
+  String _generateNextGroupCode() {
+    final groups = ref.read(groupRepositoryProvider).getGroups();
+    int maxNum = 0;
+    final regExp = RegExp(r'GRP-(\d+)', caseSensitive: false);
+    for (final g in groups) {
+      final match = regExp.firstMatch(g.groupCode);
+      if (match != null) {
+        final num = int.tryParse(match.group(1) ?? '0') ?? 0;
+        if (num > maxNum) maxNum = num;
+      }
+    }
+    return 'GRP-${(maxNum + 1).toString().padLeft(3, '0')}';
+  }
+
   void _showAddGroupDialog() {
-    final codeController = TextEditingController(text: 'GRP-0${DateTime.now().second}');
+    final codeController = TextEditingController(text: _generateNextGroupCode());
     final capacityController = TextEditingController(text: '6');
     final timeController = TextEditingController(text: '05:00 PM');
     String trainingType = AppConstants.trainingTypes.first;
+    String selectedPoolType = AppConstants.poolSemiOlympic;
     String level = 'مبتدئ';
     String? selectedCoachName;
     String? selectedCoachId;
@@ -151,6 +166,27 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                           }).toList(),
                           onChanged: (val) {
                             if (val != null) setModalState(() => trainingType = val);
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // نوع المسبح / الحمام
+                        DropdownButtonFormField<String>(
+                          value: selectedPoolType,
+                          decoration: const InputDecoration(labelText: 'نوع المسبح / الحمام *'),
+                          items: [
+                            DropdownMenuItem(
+                              value: AppConstants.poolSemiOlympic,
+                              child: Text('🏊‍♂️ ${AppConstants.poolSemiOlympic}', style: GoogleFonts.cairo(fontSize: 13)),
+                            ),
+                            DropdownMenuItem(
+                              value: AppConstants.poolRecreational,
+                              child: Text('🏖️ ${AppConstants.poolRecreational}', style: GoogleFonts.cairo(fontSize: 13)),
+                            ),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) setModalState(() => selectedPoolType = val);
                           },
                         ),
 
@@ -242,6 +278,7 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                           level: level,
                           maxCapacity: cap,
                           currentRegistered: 0,
+                          poolType: selectedPoolType,
                         );
 
                         await ref.read(groupRepositoryProvider).createGroup(group);
@@ -269,6 +306,7 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
     final registeredController = TextEditingController(text: '${group.currentRegistered}');
     final timeController = TextEditingController(text: group.sessionTime);
     String trainingType = group.trainingType;
+    String selectedPoolType = group.poolType;
     String? selectedCoachName = group.coachName;
     String? selectedCoachId = group.coachId;
     List<String> selectedDays = List<String>.from(group.trainingDays);
@@ -324,6 +362,27 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                           }).toList(),
                           onChanged: (val) {
                             if (val != null) setModalState(() => trainingType = val);
+                          },
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // نوع المسبح / الحمام
+                        DropdownButtonFormField<String>(
+                          value: selectedPoolType,
+                          decoration: const InputDecoration(labelText: 'نوع المسبح / الحمام *'),
+                          items: [
+                            DropdownMenuItem(
+                              value: AppConstants.poolSemiOlympic,
+                              child: Text('🏊‍♂️ ${AppConstants.poolSemiOlympic}', style: GoogleFonts.cairo(fontSize: 13)),
+                            ),
+                            DropdownMenuItem(
+                              value: AppConstants.poolRecreational,
+                              child: Text('🏖️ ${AppConstants.poolRecreational}', style: GoogleFonts.cairo(fontSize: 13)),
+                            ),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) setModalState(() => selectedPoolType = val);
                           },
                         ),
 
@@ -426,6 +485,7 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                           trainingType: trainingType,
                           maxCapacity: cap,
                           currentRegistered: reg,
+                          poolType: selectedPoolType,
                         );
 
                         await ref.read(groupRepositoryProvider).updateGroup(updated);
@@ -770,7 +830,9 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
             separatorBuilder: (_, __) => const SizedBox(height: 14),
             itemBuilder: (ctx, index) {
               final g = groups[index];
-              final isFull = !g.isAvailable;
+              final activeReg = LocalStore.instance.getActiveRegisteredCount(g.groupCode);
+              final availableSeats = (g.maxCapacity - activeReg) > 0 ? (g.maxCapacity - activeReg) : 0;
+              final isFull = availableSeats == 0;
 
               return Card(
                 elevation: 2,
@@ -785,18 +847,34 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Expanded(
-                            child: Text(
-                              '${g.groupCode} - ${g.trainingType}',
-                              style: GoogleFonts.cairo(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                                color: AppTheme.primaryBlue,
-                              ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  '${g.groupCode} - ${g.trainingType}',
+                                  style: GoogleFonts.cairo(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppTheme.primaryBlue,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.primaryBlue.withOpacity(0.08),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    '${g.poolIcon} ${g.poolType}',
+                                    style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.bold, color: AppTheme.primaryBlue),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                           Chip(
                             label: Text(
-                              g.status,
+                              isFull ? 'مكتملة' : 'متاحة ($availableSeats مقاعد)',
                               style: GoogleFonts.cairo(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
                             ),
                             backgroundColor: isFull ? AppTheme.errorRed : AppTheme.successGreen,
@@ -827,7 +905,7 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                           const Icon(Icons.people, size: 16, color: AppTheme.textMuted),
                           const SizedBox(width: 6),
                           Text(
-                            'المشتركين: ${g.currentRegistered} من إجمالي ${g.maxCapacity} مقعد (المتاح: ${g.availableSeats})',
+                            'المشتركين الفعليين: $activeReg من إجمالي ${g.maxCapacity} مقعد (المتاح: $availableSeats)',
                             style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted, fontWeight: FontWeight.bold),
                           ),
                         ],
@@ -850,7 +928,7 @@ class _GroupsManagementScreenState extends ConsumerState<GroupsManagementScreen>
                               onPressed: () => _showGroupSwimmersSheet(g),
                               icon: const Icon(Icons.swap_horiz, size: 18),
                               label: Text(
-                                'السباحين ونقلهم (${g.currentRegistered})',
+                                'السباحين ونقلهم ($activeReg)',
                                 style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.bold),
                               ),
                             ),
