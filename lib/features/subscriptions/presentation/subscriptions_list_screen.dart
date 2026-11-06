@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -210,14 +211,11 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
 
                   // Payment method
                   DropdownButtonFormField<String>(
-                    value: selectedPaymentMethod,
+                    value: AppConstants.paymentMethods.contains(selectedPaymentMethod) ? selectedPaymentMethod : AppConstants.paymentCash,
                     decoration: const InputDecoration(labelText: 'طريقة الدفع'),
-                    items: [
-                      DropdownMenuItem(value: AppConstants.paymentCash, child: Text(AppConstants.paymentCash, style: GoogleFonts.cairo(fontSize: 12))),
-                      DropdownMenuItem(value: AppConstants.paymentVodafoneCash, child: Text(AppConstants.paymentVodafoneCash, style: GoogleFonts.cairo(fontSize: 12))),
-                      DropdownMenuItem(value: AppConstants.paymentInstaPay, child: Text(AppConstants.paymentInstaPay, style: GoogleFonts.cairo(fontSize: 12))),
-                      DropdownMenuItem(value: AppConstants.paymentVisa, child: Text(AppConstants.paymentVisa, style: GoogleFonts.cairo(fontSize: 12))),
-                    ],
+                    items: AppConstants.paymentMethods.map((m) {
+                      return DropdownMenuItem(value: m, child: Text(m, style: GoogleFonts.cairo(fontSize: 12)));
+                    }).toList(),
                     onChanged: (val) {
                       if (val != null) setDialogState(() => selectedPaymentMethod = val);
                     },
@@ -869,11 +867,11 @@ class _SubscriptionsListScreenState extends ConsumerState<SubscriptionsListScree
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.borderGray),
+                  borderSide: BorderSide(color: Colors.blueGrey.shade200),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: AppTheme.borderGray),
+                  borderSide: BorderSide(color: Colors.blueGrey.shade200),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
