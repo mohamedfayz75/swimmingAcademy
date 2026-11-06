@@ -130,7 +130,7 @@ class _GroupAttendeesScreenState extends ConsumerState<GroupAttendeesScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('المجموعات (كشف نزول المسبح والتمام)'),
+        title: const Text('كشف نزول وحضور المجموعات'),
       ),
       body: Column(
         children: [
@@ -149,6 +149,7 @@ class _GroupAttendeesScreenState extends ConsumerState<GroupAttendeesScreen> {
 
                 return DropdownButtonFormField<String>(
                   value: currentCode,
+                  isExpanded: true,
                   decoration: const InputDecoration(
                     labelText: 'اختر كود المجموعة للتمام ونزول المسبح',
                     prefixIcon: Icon(Icons.group, color: AppTheme.primaryBlue),
@@ -157,8 +158,9 @@ class _GroupAttendeesScreenState extends ConsumerState<GroupAttendeesScreen> {
                     return DropdownMenuItem(
                       value: g.groupCode,
                       child: Text(
-                        '${g.groupCode} - ${g.coachName} (${g.trainingType})',
-                        style: GoogleFonts.cairo(fontSize: 14),
+                        '${g.groupCode} - ${g.coachName} (${g.trainingType}) | ${g.trainingDays.join("، ")} ${g.sessionTime} | ${g.poolIcon} ${g.poolType}',
+                        style: GoogleFonts.cairo(fontSize: 12),
+                        overflow: TextOverflow.ellipsis,
                       ),
                     );
                   }).toList(),
@@ -238,7 +240,7 @@ class _GroupAttendeesScreenState extends ConsumerState<GroupAttendeesScreen> {
                                             style: GoogleFonts.cairo(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.primaryBlue),
                                           ),
                                           Text(
-                                            'المواعيد: ${activeGroup.trainingDays.join('، ')} (${activeGroup.sessionTime})',
+                                            'المواعيد: ${activeGroup.trainingDays.join('، ')} (${activeGroup.sessionTime}) | ${activeGroup.poolIcon} ${activeGroup.poolType}',
                                             style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textMuted),
                                           ),
                                         ],
