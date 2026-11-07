@@ -1,4 +1,4 @@
-// Default Firebase Options configuration for Swimming Academy Management System
+// Default Firebase Options configuration for Swimming Academy Management System - Branch 3 (Air Force)
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
     show defaultTargetPlatform, kIsWeb, TargetPlatform;
@@ -19,28 +19,28 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyDDGf76SMC80YPYSQb3tCE1UANnEvKIbBM',
-    appId: '1:84036767534:android:a05af2c0ddc00a7dd3b4bf',
-    messagingSenderId: '84036767534',
-    projectId: 'swimming-world-branch-2',
-    authDomain: 'swimming-world-branch-2.firebaseapp.com',
-    storageBucket: 'swimming-world-branch-2.firebasestorage.app',
+    apiKey: 'AIzaSyBgyrmA8spee66izRAQnujzs7ob6EAumqw',
+    appId: '1:487435251373:android:574b52aaa7864357b1a024',
+    messagingSenderId: '487435251373',
+    projectId: 'swimming-branch-3',
+    authDomain: 'swimming-branch-3.firebaseapp.com',
+    storageBucket: 'swimming-branch-3.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyDDGf76SMC80YPYSQb3tCE1UANnEvKIbBM',
-    appId: '1:84036767534:android:a05af2c0ddc00a7dd3b4bf',
-    messagingSenderId: '84036767534',
-    projectId: 'swimming-world-branch-2',
-    storageBucket: 'swimming-world-branch-2.firebasestorage.app',
+    apiKey: 'AIzaSyBgyrmA8spee66izRAQnujzs7ob6EAumqw',
+    appId: '1:487435251373:android:574b52aaa7864357b1a024',
+    messagingSenderId: '487435251373',
+    projectId: 'swimming-branch-3',
+    storageBucket: 'swimming-branch-3.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyDDGf76SMC80YPYSQb3tCE1UANnEvKIbBM',
-    appId: '1:84036767534:android:a05af2c0ddc00a7dd3b4bf',
-    messagingSenderId: '84036767534',
-    projectId: 'swimming-world-branch-2',
-    storageBucket: 'swimming-world-branch-2.firebasestorage.app',
-    iosBundleId: 'com.swimmingworld.branch2',
+    apiKey: 'AIzaSyBgyrmA8spee66izRAQnujzs7ob6EAumqw',
+    appId: '1:487435251373:android:574b52aaa7864357b1a024',
+    messagingSenderId: '487435251373',
+    projectId: 'swimming-branch-3',
+    storageBucket: 'swimming-branch-3.firebasestorage.app',
+    iosBundleId: 'com.swimmingworld.airforce',
   );
 }

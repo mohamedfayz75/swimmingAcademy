@@ -42,7 +42,7 @@ class SwimmingAcademyApp extends ConsumerWidget {
     final userAsync = ref.watch(currentUserProvider);
 
     return MaterialApp(
-      title: 'S.W - المعادي',
+      title: 'S.W ق جوية',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       // Full Arabic RTL Configuration

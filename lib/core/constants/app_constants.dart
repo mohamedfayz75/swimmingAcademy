@@ -1,12 +1,12 @@
 class AppConstants {
   // App Title
-  static const String appName = 'S.W - المعادي';
-  static const String appSubtitle = 'Swimming World Academy - Maadi';
+  static const String appName = 'S.W ق جوية';
+  static const String appSubtitle = 'Swimming World Academy - Air Force Branch';
 
   // Default Branch
-  static const String defaultBranch = 'المعادي';
+  static const String defaultBranch = 'القوات الجوية';
   static const List<String> branches = [
-    'المعادي',
+    'القوات الجوية',
   ];
 
   // Firestore Collections

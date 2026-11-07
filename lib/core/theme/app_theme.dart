@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppTheme {
-  // Aquatic Turquoise Palette - فرع المعادي
-  static const Color primaryBlue = Color(0xFF008E9B); // Turquoise / Deep Ocean Teal
-  static const Color primaryLight = Color(0xFF00ACC1); // Bright Turquoise
-  static const Color accentCyan = Color(0xFF26C6DA);  // Aquatic Cyan
-  static const Color accentTeal = Color(0xFF00B4D8);  // Fresh Pool Sky
-  static const Color backgroundLight = Color(0xFFF2F9FA); // Fresh Pool Water Mist
+  // Emerald Green Luxury Palette - فرع القوات الجوية
+  static const Color primaryBlue = Color(0xFF007A5E); // Rich Royal Emerald Green
+  static const Color primaryLight = Color(0xFF00A87E); // Vibrant Emerald
+  static const Color accentCyan = Color(0xFF10B981);  // Mint / Emerald Accent
+  static const Color accentTeal = Color(0xFF059669);  // Deep Forest Mint
+  static const Color backgroundLight = Color(0xFFF0F8F5); // Fresh Soft Mint White
   static const Color surfaceWhite = Colors.white;
-  static const Color textDark = Color(0xFF1A2530);
-  static const Color textMuted = Color(0xFF6B7C8E);
+  static const Color textDark = Color(0xFF14241E);
+  static const Color textMuted = Color(0xFF5E7369);
 
   // Status colors
   static const Color successGreen = Color(0xFF2E7D32);

@@ -263,13 +263,13 @@ class _PlayerRegistrationScreenState extends ConsumerState<PlayerRegistrationScr
 
               const SizedBox(height: 16),
 
-              // Branch (Fixed to دار المشاة)
+              // Branch (Fixed to القوات الجوية)
               TextFormField(
                 controller: _branchController,
                 readOnly: true,
                 decoration: const InputDecoration(
                   labelText: 'الفرع *',
-                  hintText: 'دار المشاة',
+                  hintText: 'القوات الجوية',
                   prefixIcon: Icon(Icons.location_on, color: AppTheme.primaryBlue),
                 ),
                 validator: (val) => val == null || val.trim().isEmpty ? 'يرجى تحديد الفرع' : null,

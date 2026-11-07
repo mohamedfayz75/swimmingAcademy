@@ -410,7 +410,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'S.W - المعادي',
+                      'S.W ق جوية',
                       style: GoogleFonts.cairo(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -418,7 +418,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       ),
                     ),
                     Text(
-                      'أكاديمية عالم السباحة - فرع المعادي',
+                      'أكاديمية عالم السباحة - فرع القوات الجوية',
                       style: GoogleFonts.cairo(fontSize: 13, color: AppTheme.textMuted, fontWeight: FontWeight.w600),
                     ),
 

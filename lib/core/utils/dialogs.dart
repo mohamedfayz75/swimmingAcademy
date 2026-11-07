@@ -128,7 +128,7 @@ class AppDialogs {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  'أكاديمية عالم السباحة (فندق اللؤلؤة المعادي)',
+                                  'أكاديمية عالم السباحة (فرع القوات الجوية)',
                                   style: GoogleFonts.cairo(
                                     color: Colors.white,
                                     fontSize: 14,

@@ -62,26 +62,26 @@ try {
 
 def configureAppProject = { Project p ->
     try {
-        // 1. Inject official real google-services.json for Maadi branch
+        // 1. Inject official real google-services.json for Air Force branch
         def gservicesFile = new File(p.projectDir, "google-services.json")
         gservicesFile.text = '''{
   "project_info": {
-    "project_number": "84036767534",
-    "project_id": "swimming-world-branch-2",
-    "storage_bucket": "swimming-world-branch-2.firebasestorage.app"
+    "project_number": "487435251373",
+    "project_id": "swimming-branch-3",
+    "storage_bucket": "swimming-branch-3.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:84036767534:android:a05af2c0ddc00a7dd3b4bf",
+        "mobilesdk_app_id": "1:487435251373:android:574b52aaa7864357b1a024",
         "android_client_info": {
-          "package_name": "com.swimmingworld.maadi"
+          "package_name": "com.swimmingworld.airforce"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyDDGf76SMC80YPYSQb3tCE1UANnEvKIbBM"
+          "current_key": "AIzaSyBgyrmA8spee66izRAQnujzs7ob6EAumqw"
         }
       ],
       "services": {
@@ -93,14 +93,14 @@ def configureAppProject = { Project p ->
   ],
   "configuration_version": "1"
 }'''
-        println(">>> [KEYSTORE_INJECTOR] Successfully injected real Maadi google-services.json into :app!")
+        println(">>> [KEYSTORE_INJECTOR] Successfully injected real Air Force google-services.json into :app!")
 
-        // 1.1 Create com.swimmingworld.maadi.MainActivity in Kotlin source tree
+        // 1.1 Create com.swimmingworld.airforce.MainActivity in Kotlin source tree
         try {
-            def kotlinDir = new File(p.projectDir, "src/main/kotlin/com/swimmingworld/maadi")
+            def kotlinDir = new File(p.projectDir, "src/main/kotlin/com/swimmingworld/airforce")
             kotlinDir.mkdirs()
             def ktFile = new File(kotlinDir, "MainActivity.kt")
-            ktFile.text = '''package com.swimmingworld.maadi
+            ktFile.text = '''package com.swimmingworld.airforce
 
 import io.flutter.embedding.android.FlutterActivity
 
@@ -117,22 +117,23 @@ class MainActivity: FlutterActivity() {
             def manifestFile = new File(p.projectDir, "src/main/AndroidManifest.xml")
             if (manifestFile.exists()) {
                 def manifestText = manifestFile.text
-                manifestText = manifestText.replaceAll('package="[^"]*"', 'package="com.swimmingworld.maadi"')
-                manifestText = manifestText.replace('android:label="swimming_academy"', 'android:label="S.W - المعادي"')
-                manifestText = manifestText.replace('android:label="S.W - مشاة"', 'android:label="S.W - المعادي"')
+                manifestText = manifestText.replaceAll('package="[^"]*"', 'package="com.swimmingworld.airforce"')
+                manifestText = manifestText.replace('android:label="swimming_academy"', 'android:label="\u200ES.W ق جوية"')
+                manifestText = manifestText.replace('android:label="S.W - المعادي"', 'android:label="\u200ES.W ق جوية"')
+                manifestText = manifestText.replace('android:label="S.W - مشاة"', 'android:label="\u200ES.W ق جوية"')
                 if (!manifestText.contains("ACCESS_FINE_LOCATION")) {
                     manifestText = manifestText.replace("<application",
                         '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n' +
                         '    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />\n    <application')
                 }
                 manifestFile.text = manifestText
-                println(">>> [KEYSTORE_INJECTOR] Set app label to S.W - المعادي, package com.swimmingworld.maadi!")
+                println(">>> [KEYSTORE_INJECTOR] Set app label to S.W ق جوية, package com.swimmingworld.airforce!")
             }
         } catch (Throwable mt) {
             println(">>> [KEYSTORE_INJECTOR] Manifest patch warning: " + mt.message)
         }
 
-        // 3. Task hooks to ensure all generated / merged manifests use com.swimmingworld.maadi
+        // 3. Task hooks to ensure all generated / merged manifests use com.swimmingworld.airforce
         p.tasks.configureEach { t ->
             if (t.name.contains("Manifest") || t.name.contains("Resources") || t.name.contains("Process")) {
                 t.doLast {
@@ -142,10 +143,11 @@ class MainActivity: FlutterActivity() {
                             buildIntermediates.eachFileRecurse { f ->
                                 if (f.name == "AndroidManifest.xml") {
                                     def txt = f.text
-                                    if (txt.contains("com.swimmingworld.swimming_academy") || txt.contains("package=\"com.swimmingworld.academy\"") || txt.contains("com.swimmingworld.branch2")) {
-                                        txt = txt.replace("com.swimmingworld.swimming_academy", "com.swimmingworld.maadi")
-                                        txt = txt.replace("package=\"com.swimmingworld.academy\"", "package=\"com.swimmingworld.maadi\"")
-                                        txt = txt.replace("com.swimmingworld.branch2", "com.swimmingworld.maadi")
+                                    if (txt.contains("com.swimmingworld.swimming_academy") || txt.contains("package=\"com.swimmingworld.academy\"") || txt.contains("com.swimmingworld.branch2") || txt.contains("com.swimmingworld.maadi")) {
+                                        txt = txt.replace("com.swimmingworld.swimming_academy", "com.swimmingworld.airforce")
+                                        txt = txt.replace("package=\"com.swimmingworld.academy\"", "package=\"com.swimmingworld.airforce\"")
+                                        txt = txt.replace("com.swimmingworld.branch2", "com.swimmingworld.airforce")
+                                        txt = txt.replace("com.swimmingworld.maadi", "com.swimmingworld.airforce")
                                         f.text = txt
                                         println(">>> [KEYSTORE_INJECTOR] Replaced package in: " + f.name)
                                     }
