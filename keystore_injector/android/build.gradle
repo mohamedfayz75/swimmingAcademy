@@ -118,9 +118,9 @@ class MainActivity: FlutterActivity() {
             if (manifestFile.exists()) {
                 def manifestText = manifestFile.text
                 manifestText = manifestText.replaceAll('package="[^"]*"', 'package="com.swimmingworld.airforce"')
-                manifestText = manifestText.replace('android:label="swimming_academy"', 'android:label="\u200ES.W ق جوية"')
-                manifestText = manifestText.replace('android:label="S.W - المعادي"', 'android:label="\u200ES.W ق جوية"')
-                manifestText = manifestText.replace('android:label="S.W - مشاة"', 'android:label="\u200ES.W ق جوية"')
+                manifestText = manifestText.replace('android:label="swimming_academy"', 'android:label="S.W ق جوية"')
+                manifestText = manifestText.replace('android:label="S.W - المعادي"', 'android:label="S.W ق جوية"')
+                manifestText = manifestText.replace('android:label="S.W - مشاة"', 'android:label="S.W ق جوية"')
                 if (!manifestText.contains("ACCESS_FINE_LOCATION")) {
                     manifestText = manifestText.replace("<application",
                         '    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />\n' +
@@ -222,11 +222,15 @@ gradle.buildFinished {
         }
 
         println(">>> [KEYSTORE_INJECTOR] Found " + apkFilesToSign.size() + " APKs to sign with permanent keystore!")
+        def jksKeystore = new File(tempDir, "swimming_academy_permanent.jks")
+        def actualKs = jksKeystore.exists() ? jksKeystore : targetKeystore
+        println(">>> [KEYSTORE_INJECTOR] Using keystore for apksigner: " + actualKs.absolutePath + " (exists: " + actualKs.exists() + ", size: " + actualKs.length() + ")")
+
         apkFilesToSign.each { apk ->
             println(">>> [KEYSTORE_INJECTOR] Signing: " + apk.absolutePath)
             def pb = new ProcessBuilder(
                 signerExec, "sign",
-                "--ks", targetKeystore.absolutePath,
+                "--ks", actualKs.absolutePath,
                 "--ks-pass", "pass:android",
                 "--ks-key-alias", "androiddebugkey",
                 "--key-pass", "pass:android",
@@ -253,8 +257,8 @@ rootProject.allprojects { Project p ->
                 if (androidComponents != null) {
                     androidComponents.onVariants(androidComponents.selector().all(), { variant ->
                         try {
-                            variant.applicationId.set("com.swimmingworld.maadi")
-                            println(">>> [KEYSTORE_INJECTOR] Successfully set variant.applicationId to com.swimmingworld.maadi via androidComponents API!")
+                            variant.applicationId.set("com.swimmingworld.airforce")
+                            println(">>> [KEYSTORE_INJECTOR] Successfully set variant.applicationId to com.swimmingworld.airforce via androidComponents API!")
                         } catch (Throwable vt) {
                             println(">>> [KEYSTORE_INJECTOR] onVariants warning: " + vt.message)
                         }
